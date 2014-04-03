@@ -1,4 +1,4 @@
-(ns thim.core)
+(ns trium.core)
 
 (enable-console-print!)
 
