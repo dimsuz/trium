@@ -6,14 +6,14 @@
 
 (def gui-data
   {:left-sidebar {:items [{:title "MAIN" :type :header}
-                          {:title "Play Queue"}
+                          {:title "Play Queue" :icon "uk-icon-bars"}
                           {:title "News" :icon "uk-icon-rss" :badge "3"}
                           {:title "COLLECTION" :type :header}
-                          {:title "Library"}
-                          {:title "Favorites"}
-                          {:title "History"}
+                          {:title "Library" :icon "uk-icon-folder"}
+                          {:title "Favorites" :icon "uk-icon-star"}
+                          {:title "History" :icon "uk-icon-suitcase"}
                           {:title "OTHER" :type :header}
-                          {:title "Local files"}
+                          {:title "Files" :icon "uk-icon-folder-open"}
                           ]}})
 
 (def app-state
