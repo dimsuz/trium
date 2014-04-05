@@ -1,0 +1,8 @@
+#main-sidebar {
+  max-height: 400px;
+  overflow-y: auto;
+}
+#center-panel {
+  max-height: 400px;
+  overflow-y: auto;
+}

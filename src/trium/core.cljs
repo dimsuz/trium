@@ -12,16 +12,29 @@
                           {:title "Library" :icon "uk-icon-folder"}
                           {:title "Favorites" :icon "uk-icon-star"}
                           {:title "History" :icon "uk-icon-suitcase"}
-                          {:title "OTHER" :type :header}
                           {:title "Files" :icon "uk-icon-folder-open"}
+                          {:title "PLAYLISTS" :type :header}
+                          {:title "Chillout" :icon "uk-icon-music"}
+                          {:title "Jazz" :icon "uk-icon-music"}
+                          {:title "Jazz" :icon "uk-icon-music"}
+                          {:title "Jazz" :icon "uk-icon-music"}
+                          {:title "Jazz" :icon "uk-icon-music"}
+                          {:title "Jazz" :icon "uk-icon-music"}
+                          {:title "Jazz" :icon "uk-icon-music"}
+                          {:title "Jazz" :icon "uk-icon-music"}
+                          {:title "Jazz" :icon "uk-icon-music"}
+                          {:title "Jazz" :icon "uk-icon-music"}
+                          {:title "Jazz" :icon "uk-icon-music"}
+                          {:title "Jazz" :icon "uk-icon-music"}
+                          {:title "Jazz" :icon "uk-icon-music"}
                           ]}})
 
 (def app-state
   (atom
-   {:ui gui-data}
-   {:text "Hello, Trium"}))
+   {:ui gui-data
+    :queue {:tracks [{:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"}]}}))
 
-(defn make-sidebar-item [{:keys [title icon badge]} item]
+(defn make-sidebar-item [{:keys [title icon badge]}]
   (dom/li nil
           (dom/a nil
                  (when icon (dom/i #js {:className icon}))
@@ -44,8 +57,25 @@
                (apply dom/ul #js {:className "uk-nav uk-nav-side"}
                       (om/build-all sidebar-item (:items sidebar)))))))
 
-(defn app-ui [app owner]
+(defn left-sidebar-view [app owner]
   (sidebar-view (get-in app [:ui :left-sidebar]) owner))
 
-(om/root app-ui app-state
-         {:target (. js/document (getElementById "testview"))})
+(defn queue-row [track owner]
+  (reify
+    om/IRender
+    (render [_]
+      (dom/tr nil
+              (dom/td nil (:title track))))))
+
+(defn queue-view [app owner]
+  (reify
+    om/IRender
+    (render [_]
+      (dom/table #js {:className "uk-table"}
+                 (apply dom/tbody nil
+                        (om/build-all queue-row (get-in app [:queue :tracks])))))))
+
+(om/root left-sidebar-view app-state
+         {:target (. js/document (getElementById "main-sidebar"))})
+(om/root queue-view app-state
+         {:target (. js/document (getElementById "center-panel"))})
