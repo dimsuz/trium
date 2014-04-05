@@ -7,7 +7,7 @@
 (def gui-data
   {:left-sidebar {:items [{:title "MAIN" :type :header}
                           {:title "Play Queue"}
-                          {:title "News"}
+                          {:title "News" :icon "uk-icon-rss" :badge "3"}
                           {:title "COLLECTION" :type :header}
                           {:title "Library"}
                           {:title "Favorites"}
@@ -21,13 +21,20 @@
    {:ui gui-data}
    {:text "Hello, Trium"}))
 
+(defn make-sidebar-item [{:keys [title icon badge]} item]
+  (dom/li nil
+          (dom/a nil
+                 (when icon (dom/i #js {:className icon}))
+                 (str " " title " ")
+                 (when badge (dom/span #js {:className "uk-badge"} badge)))))
+
 (defn sidebar-item [item owner]
   (reify
     om/IRender
     (render [_]
       (if (= :header (:type item))
         (dom/li #js {:className "uk-nav-header"} (:title item))
-        (dom/li nil (dom/a nil (dom/i #js {:className "uk-icon-rss"}) (str " " (:title item))))))))
+        (make-sidebar-item item)))))
 
 (defn sidebar-view [sidebar owner]
   (reify
