@@ -25,18 +25,20 @@
   (reify
     om/IRender
     (render [_]
-      (dom/li (when (= :header (:type item)) #js {:className "uk-nav-header"})
-              (dom/a nil (:title item))))))
+      (if (= :header (:type item))
+        (dom/li #js {:className "uk-nav-header"} (:title item))
+        (dom/li nil (dom/a nil (dom/i #js {:className "uk-icon-rss"}) (str " " (:title item))))))))
 
 (defn sidebar-view [sidebar owner]
   (reify
     om/IRender
     (render [_]
-      (apply dom/ul #js {:className "uk-nav"}
-             (om/build-all sidebar-item (:items sidebar))))))
+      (dom/div #js {:className "uk-panel uk-panel-box"}
+               (apply dom/ul #js {:className "uk-nav uk-nav-side"}
+                      (om/build-all sidebar-item (:items sidebar)))))))
 
 (defn app-ui [app owner]
-  (sidebar-view (get-in app [:ui :left-sidebar])))
+  (sidebar-view (get-in app [:ui :left-sidebar]) owner))
 
 (om/root app-ui app-state
          {:target (. js/document (getElementById "testview"))})
