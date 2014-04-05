@@ -32,7 +32,7 @@
 (def app-state
   (atom
    {:ui gui-data
-    :queue {:tracks [{:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"}]}}))
+    :queue {:tracks [{:title "Abakus - Shared Light" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"}]}}))
 
 (defn make-sidebar-item [{:keys [title icon badge]}]
   (dom/li nil
@@ -49,16 +49,13 @@
         (dom/li #js {:className "uk-nav-header"} (:title item))
         (make-sidebar-item item)))))
 
-(defn sidebar-view [sidebar owner]
-  (reify
-    om/IRender
-    (render [_]
-      (dom/div #js {:className "uk-panel uk-panel-box"}
-               (apply dom/ul #js {:className "uk-nav uk-nav-side"}
-                      (om/build-all sidebar-item (:items sidebar)))))))
+(defn sidebar-view [sidebar]
+  (dom/div #js {:className "uk-panel uk-panel-box"}
+           (apply dom/ul #js {:className "uk-nav uk-nav-side"}
+                  (om/build-all sidebar-item (:items sidebar)))))
 
-(defn left-sidebar-view [app owner]
-  (sidebar-view (get-in app [:ui :left-sidebar]) owner))
+(defn left-sidebar [app]
+  (sidebar-view (get-in app [:ui :left-sidebar])))
 
 (defn queue-row [track owner]
   (reify
@@ -67,15 +64,26 @@
       (dom/tr nil
               (dom/td nil (:title track))))))
 
-(defn queue-view [app owner]
+(defn queue-view [app]
+  (dom/table #js {:className "uk-table"}
+             (apply dom/tbody nil
+                    (om/build-all queue-row (get-in app [:queue :tracks])))))
+
+(defn playback-controls-view [app]
+  (dom/div #js {:className "uk-panel uk-panel-box"}
+           (dom/a #js {:href "#" :className "uk-icon-button uk-icon-backward"} nil)
+           (dom/a #js {:href "#" :className "uk-icon-button uk-icon-play"} nil)
+           (dom/a #js {:href "#" :className "uk-icon-button uk-icon-forward"} nil)))
+
+(defn trium-app [app owner]
   (reify
     om/IRender
     (render [_]
-      (dom/table #js {:className "uk-table"}
-                 (apply dom/tbody nil
-                        (om/build-all queue-row (get-in app [:queue :tracks])))))))
+      (dom/div #js {:className "uk-grid"}
+               (dom/div #js {:id "main-sidebar" :className "uk-width-1-5"} (left-sidebar app))
+               (dom/div #js {:id "center-panel" :className "uk-width-4-5 uk-panel uk-panel-box"} (queue-view app))
+               (dom/div #js {:className "uk-width-1-1"} (playback-controls-view app)))))
+    )
 
-(om/root left-sidebar-view app-state
-         {:target (. js/document (getElementById "main-sidebar"))})
-(om/root queue-view app-state
-         {:target (. js/document (getElementById "center-panel"))})
+(om/root trium-app app-state
+         {:target (. js/document (getElementById "app"))})
