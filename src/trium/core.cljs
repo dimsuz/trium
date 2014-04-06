@@ -30,14 +30,17 @@
                           {:title "Jazz" :icon "uk-icon-music"}
                           {:title "Jazz" :icon "uk-icon-music"}
                           ]}
-   :playback-buttons [{:icon "uk-icon-backward" :command :backward}
-                      {:icon "uk-icon-play" :command :play}
-                      {:icon "uk-icon-forward" :command :forward}]})
+   :playback-buttons {:backward {:icon "uk-icon-backward"}
+                      :play {:icon "uk-icon-play"}
+                      :forward {:icon "uk-icon-forward"}}})
 
 (def app-state
   (atom
    {:ui gui-data
-    :queue {:tracks [{:title "Abakus - Shared Light" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"}]}}))
+    :queue {:tracks [{:title "Abakus - Shared Light" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"}]}
+    ;; possible values: :playing :paused
+    :player-state :paused
+    }))
 
 (defn make-sidebar-item [{:keys [title icon badge]}]
   (dom/li nil
@@ -74,20 +77,37 @@
              (apply dom/tbody nil
                     (om/build-all queue-row (get-in app [:queue :tracks])))))
 
-(defn playback-control-button [{:keys [icon command]} owner]
-  (reify
-    om/IRenderState
-    (render-state [this {:keys [comm]}]
-      (dom/a #js {:href "#" :className (str "uk-icon-button " icon)
-                  :onClick (fn [e] (put! comm [:playback-command command]))} nil))))
+(defn playback-control-button [button owner]
+  (let [command (first button)
+        icon (:icon (second button))]
+    (reify
+      om/IRenderState
+      (render-state [this {:keys [comm]}]
+        (dom/a #js {:href "#" :className (str "uk-icon-button " icon)
+                    :onClick (fn [e] (put! comm [:playback-command command]))} nil)))))
 
 (defn playback-controls-view [app state]
   (apply dom/div #js {:className "uk-panel uk-panel-box"}
-         (om/build-all playback-control-button (get-in app [:ui :playback-buttons]) {:init-state state}))
+         (om/build-all playback-control-button (get-in app [:ui :playback-buttons]) {:init-state state})))
+
+(defn handle-playback-cmd [app cmd]
+  (om/transact! app (fn [app]
+                      (cond
+                       (= :play cmd) (if (= :paused (:player-state app))
+                                       (-> app
+                                           (assoc-in [:ui :playback-buttons cmd :icon] "uk-icon-pause")
+                                           (assoc :player-state :playing))
+                                       (-> app
+                                           (assoc-in [:ui :playback-buttons cmd :icon] "uk-icon-play")
+                                           (assoc :player-state :paused)))
+                       :else app)))
   )
 
 (defn handle-event [app type value]
-  (prn (str "got event " type " - " value)))
+  (cond
+   (= type :playback-command) (handle-playback-cmd app value)
+   :else
+   (prn (str "don't know how to handle event " type " - " value))))
 
 (defn trium-app [app owner]
   (reify
