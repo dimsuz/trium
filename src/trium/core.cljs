@@ -2,7 +2,7 @@
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [cljs.core.async :refer [put! chan <!]]))
+            [cljs.core.async :refer [put! chan <! timeout]]))
 
 (enable-console-print!)
 
@@ -90,17 +90,47 @@
   (apply dom/div #js {:className "uk-panel uk-panel-box"}
          (om/build-all playback-control-button (get-in app [:ui :playback-buttons]) {:init-state state})))
 
+;; TODO put into player namespace
+(defn player-play [track c]
+  (go
+    (<! (timeout 1000))
+    (put! c [:playing]))
+  c)
+
+;; TODO put into player namespace
+(defn player-pause [c]
+  (go
+    (<! (timeout 1000))
+    (put! c [:paused]))
+  c)
+
+(defn playpause-playback [app]
+  "Starts playing or pauses depending on current player state.
+ Returns a channel to which a new player state will be put when it changes"
+  (let [c (chan)]
+    (if (= :paused (:player-state app))
+      (player-play {:title "Track" :file "/home/file.mp3"} c)
+      (player-pause c))))
+
 (defn handle-playback-cmd [app cmd]
-  (om/transact! app (fn [app]
-                      (cond
-                       (= :play cmd) (if (= :paused (:player-state app))
-                                       (-> app
-                                           (assoc-in [:ui :playback-buttons cmd :icon] "uk-icon-pause")
-                                           (assoc :player-state :playing))
-                                       (-> app
-                                           (assoc-in [:ui :playback-buttons cmd :icon] "uk-icon-play")
-                                           (assoc :player-state :paused)))
-                       :else app)))
+  (cond
+   (= :play cmd) (let [ch (playpause-playback @app)]
+                   (go
+                     (let [[new-state] (<! ch)]
+                       (prn new-state)
+                       (om/transact! app
+                                     (fn [app]
+                                       (if (= :playing new-state)
+                                         (-> app
+                                             (assoc-in [:ui :playback-buttons :play :icon] "uk-icon-pause")
+                                             (assoc :player-state :playing))
+                                         (-> app
+                                             (assoc-in [:ui :playback-buttons :play :icon] "uk-icon-play")
+                                             (assoc :player-state :paused))))))))
+   (= :forward cmd) (prn "TODO implement me")
+   (= :backward cmd) (prn "TODO implement me")
+   )
+
   )
 
 (defn handle-event [app type value]
