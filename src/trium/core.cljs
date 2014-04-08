@@ -18,7 +18,7 @@
                           {:title "PLAYLISTS" :type :header}
                           {:title "Chillout" :icon "uk-icon-music"}
                           {:title "Jazz" :icon "uk-icon-music"}
-                          {:title "Jazz" :icon "uk-icon-music"}
+                          {:title "Ambient" :icon "uk-icon-music"}
                           {:title "Jazz" :icon "uk-icon-music"}
                           {:title "Jazz" :icon "uk-icon-music"}
                           {:title "Jazz" :icon "uk-icon-music"}
@@ -33,8 +33,7 @@
 
 (def app-state
   (atom
-   {:ui gui-data
-    :queue {:tracks [{:title "Abakus - Shared Light" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"}]}
+   {:queue {:tracks [{:title "Abakus - Shared Light" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"}]}
     ;; possible values: :playing :paused
     :player-state :paused
     }))
@@ -59,8 +58,8 @@
            (apply dom/ul #js {:className "uk-nav uk-nav-side"}
                   (om/build-all sidebar-item (:items sidebar)))))
 
-(defn left-sidebar [app]
-  (sidebar-view (get-in app [:ui :left-sidebar])))
+(defn left-sidebar []
+  (sidebar-view (:left-sidebar gui-data)))
 
 (defn queue-row [track owner]
   (reify
@@ -137,10 +136,8 @@
                        (fn [app]
                          (if (= :playing new-state)
                            (-> app
-                               (assoc-in [:ui :playback-buttons :play :icon] "uk-icon-pause")
                                (assoc :player-state :playing))
                            (-> app
-                               (assoc-in [:ui :playback-buttons :play :icon] "uk-icon-play")
                                (assoc :player-state :paused))))))))
    (= :forward cmd) (prn "TODO implement me")
    (= :backward cmd) (prn "TODO implement me")
@@ -168,7 +165,7 @@
     om/IRenderState
     (render-state [this state]
       (dom/div #js {:className "uk-grid"}
-               (dom/div #js {:id "main-sidebar" :className "uk-width-1-5"} (left-sidebar app))
+               (dom/div #js {:id "main-sidebar" :className "uk-width-1-5"} (left-sidebar))
                (dom/div #js {:id "center-panel" :className "uk-width-4-5 uk-panel uk-panel-box"} (queue-view app))
                (dom/div #js {:className "uk-width-1-1"} (playback-controls-view app state)))))
     )
