@@ -2,7 +2,8 @@
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [cljs.core.async :refer [put! chan <! timeout]]))
+            [cljs.core.async :refer [put! chan <! timeout]]
+            [trium.player :as player]))
 
 (enable-console-print!)
 
@@ -104,27 +105,13 @@
            (om/build playpause-button app {:init-state state})
            (om/build forward-button app {:init-state state})))
 
-;; TODO put into player namespace
-(defn player-play [track c]
-  (go
-    (<! (timeout 1000))
-    (put! c [:playing]))
-  c)
-
-;; TODO put into player namespace
-(defn player-pause [c]
-  (go
-    (<! (timeout 1000))
-    (put! c [:paused]))
-  c)
-
 (defn playpause-playback [app cmd]
   "Starts playing or pauses depending on current player state.
  Returns a channel to which a new player state will be put when it changes"
-  (let [c (chan)]
+  (let [comm (chan)]
     (if (= :play cmd)
-      (player-play {:title "Track" :file "/home/file.mp3"} c)
-      (player-pause c))))
+      (player/play {:title "Track" :file "/home/file.mp3"} comm)
+      (player/pause comm))))
 
 (defn handle-playback-cmd [app cmd]
   (cond
