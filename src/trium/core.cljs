@@ -29,10 +29,7 @@
                           {:title "Jazz" :icon "uk-icon-music"}
                           {:title "Jazz" :icon "uk-icon-music"}
                           {:title "Jazz" :icon "uk-icon-music"}
-                          ]}
-   :playback-buttons {:backward {:icon "uk-icon-backward"}
-                      :play {:icon "uk-icon-play"}
-                      :forward {:icon "uk-icon-forward"}}})
+                          ]}})
 
 (def app-state
   (atom
@@ -77,18 +74,36 @@
              (apply dom/tbody nil
                     (om/build-all queue-row (get-in app [:queue :tracks])))))
 
-(defn playback-control-button [button owner]
-  (let [command (first button)
-        icon (:icon (second button))]
-    (reify
-      om/IRenderState
-      (render-state [this {:keys [comm]}]
+(defn playpause-button [app owner]
+  (reify
+    om/IRenderState
+    (render-state [this {:keys [comm]}]
+      (let [paused? (= :paused (:player-state app))
+            icon (if paused? "uk-icon-play" "uk-icon-pause")
+            command (if paused? :play :pause)]
         (dom/a #js {:href "#" :className (str "uk-icon-button " icon)
-                    :onClick (fn [e] (put! comm [:playback-command command]))} nil)))))
+                    :onClick (fn [e]
+                               (put! comm [:playback-command command]))} nil)))))
+
+(defn forward-button [app owner]
+  (reify
+    om/IRenderState
+    (render-state [this {:keys [comm]}]
+      (dom/a #js {:href "#" :className "uk-icon-button uk-icon-forward"
+                  :onClick (fn [e] (put! comm [:playback-command :forward]))} nil))))
+
+(defn backward-button [app owner]
+  (reify
+    om/IRenderState
+    (render-state [this {:keys [comm]}]
+      (dom/a #js {:href "#" :className "uk-icon-button uk-icon-backward"
+                  :onClick (fn [e] (put! comm [:playback-command :backward]))} nil))))
 
 (defn playback-controls-view [app state]
-  (apply dom/div #js {:className "uk-panel uk-panel-box"}
-         (om/build-all playback-control-button (get-in app [:ui :playback-buttons]) {:init-state state})))
+  (dom/div #js {:className "uk-panel uk-panel-box"}
+           (om/build backward-button app {:init-state state})
+           (om/build playpause-button app {:init-state state})
+           (om/build forward-button app {:init-state state})))
 
 ;; TODO put into player namespace
 (defn player-play [track c]
@@ -104,29 +119,29 @@
     (put! c [:paused]))
   c)
 
-(defn playpause-playback [app]
+(defn playpause-playback [app cmd]
   "Starts playing or pauses depending on current player state.
  Returns a channel to which a new player state will be put when it changes"
   (let [c (chan)]
-    (if (= :paused (:player-state app))
+    (if (= :play cmd)
       (player-play {:title "Track" :file "/home/file.mp3"} c)
       (player-pause c))))
 
 (defn handle-playback-cmd [app cmd]
   (cond
-   (= :play cmd) (let [ch (playpause-playback @app)]
-                   (go
-                     (let [[new-state] (<! ch)]
-                       (prn new-state)
-                       (om/transact! app
-                                     (fn [app]
-                                       (if (= :playing new-state)
-                                         (-> app
-                                             (assoc-in [:ui :playback-buttons :play :icon] "uk-icon-pause")
-                                             (assoc :player-state :playing))
-                                         (-> app
-                                             (assoc-in [:ui :playback-buttons :play :icon] "uk-icon-play")
-                                             (assoc :player-state :paused))))))))
+   (or (= :play cmd) (= :pause cmd))
+   (let [ch (playpause-playback @app cmd)]
+     (go
+       (let [[new-state] (<! ch)]
+         (om/transact! app
+                       (fn [app]
+                         (if (= :playing new-state)
+                           (-> app
+                               (assoc-in [:ui :playback-buttons :play :icon] "uk-icon-pause")
+                               (assoc :player-state :playing))
+                           (-> app
+                               (assoc-in [:ui :playback-buttons :play :icon] "uk-icon-play")
+                               (assoc :player-state :paused))))))))
    (= :forward cmd) (prn "TODO implement me")
    (= :backward cmd) (prn "TODO implement me")
    )
