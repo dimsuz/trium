@@ -37,6 +37,7 @@
    {:queue {:tracks [{:title "Abakus - Shared Light" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"}]}
     ;; possible values: :playing :paused
     :player-state :paused
+    :current-track nil
     }))
 
 (defn make-sidebar-item [{:keys [title icon badge]}]
@@ -99,11 +100,21 @@
       (dom/a #js {:href "#" :className "uk-icon-button uk-icon-backward"
                   :onClick (fn [e] (put! comm [:playback-command :backward]))} nil))))
 
+
+(defn current-track-view [track owner]
+  (reify
+    om/IRender
+    (render [_]
+      (dom/span nil (if track
+                      (str (:title track) " "(:duration track))
+                     "No track playing")))))
+
 (defn playback-controls-view [app state]
   (dom/div #js {:className "uk-panel uk-panel-box"}
            (om/build backward-button app {:init-state state})
            (om/build playpause-button app {:init-state state})
-           (om/build forward-button app {:init-state state})))
+           (om/build forward-button app {:init-state state})
+           (om/build current-track-view (:current-track app))))
 
 (defn playpause-playback [app cmd]
   "Starts playing or pauses depending on current player state.
@@ -117,15 +128,17 @@
   (cond
    (or (= :play cmd) (= :pause cmd))
    (let [ch (playpause-playback @app cmd)]
+     ;; change player state right away and then wait for track to be
+     ;; loaded and details to arrive
+     (om/transact! app (fn [app] (assoc app :player-state
+                                        (if (= :paused (:player-state app)) :playing :paused))))
      (go
-       (let [[new-state] (<! ch)]
+       (let [[new-state track] (<! ch)]
          (om/transact! app
                        (fn [app]
                          (if (= :playing new-state)
-                           (-> app
-                               (assoc :player-state :playing))
-                           (-> app
-                               (assoc :player-state :paused))))))))
+                           (assoc app :current-track track)
+                           (assoc app :current-track nil)))))))
    (= :forward cmd) (prn "TODO implement me")
    (= :backward cmd) (prn "TODO implement me")
    )

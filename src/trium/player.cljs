@@ -5,7 +5,7 @@
 (defn play [track comm]
   (go
     (<! (timeout 1000))
-    (put! comm [:playing]))
+    (put! comm [:playing (assoc track :duration "02:55")]))
   comm)
 
 (defn pause [comm]
