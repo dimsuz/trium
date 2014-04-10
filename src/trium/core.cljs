@@ -170,5 +170,6 @@
                (dom/div #js {:className "uk-width-1-1"} (playback-controls-view app state)))))
     )
 
+(player/init)
 (om/root trium-app app-state
          {:target (. js/document (getElementById "app"))})
