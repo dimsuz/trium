@@ -4,5 +4,20 @@
 }
 #center-panel {
   max-height: 400px;
+  overflow: hidden;
+  position: relative; /* for notifications which use absolute positioning */
+}
+.center-panel-content {
+  max-height: 400px;
   overflow-y: auto;
+}
+
+.notification {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+}
+.notification-inner {
+  margin: 0 18px 0 10px;
 }

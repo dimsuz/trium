@@ -109,6 +109,13 @@
                       (str (:title track) " "(:duration track))
                      "No track playing")))))
 
+(defn notification-view [app owner]
+  (reify
+    om/IRender
+    (render [_]
+      (dom/div #js {:className "notification"}
+               (dom/div #js {:className "notification-inner uk-panel uk-panel-box"} "Notification")))))
+
 (defn playback-controls-view [app state]
   (dom/div #js {:className "uk-panel uk-panel-box"}
            (om/build backward-button app {:init-state state})
@@ -166,10 +173,13 @@
     (render-state [this state]
       (dom/div #js {:className "uk-grid"}
                (dom/div #js {:id "main-sidebar" :className "uk-width-1-5"} (left-sidebar))
-               (dom/div #js {:id "center-panel" :className "uk-width-4-5 uk-panel uk-panel-box"} (queue-view app))
+               (dom/div #js {:id "center-panel" :className "uk-width-4-5"}
+                        (dom/div #js {:className "center-panel-content"}
+                                 (queue-view app))
+                        (om/build notification-view app))
                (dom/div #js {:className "uk-width-1-1"} (playback-controls-view app state)))))
     )
 
-(player/init)
+;(player/init)
 (om/root trium-app app-state
          {:target (. js/document (getElementById "app"))})
