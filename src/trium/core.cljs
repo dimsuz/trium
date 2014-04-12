@@ -55,14 +55,6 @@
         (dom/li #js {:className "uk-nav-header"} (:title item))
         (make-sidebar-item item)))))
 
-(defn sidebar-view [sidebar]
-  (dom/div #js {:className "uk-panel uk-panel-box"}
-           (apply dom/ul #js {:className "uk-nav uk-nav-side"}
-                  (om/build-all sidebar-item (:items sidebar)))))
-
-(defn left-sidebar []
-  (sidebar-view (:left-sidebar gui-data)))
-
 (defn queue-row [track owner]
   (reify
     om/IRender
@@ -116,12 +108,37 @@
       (dom/div #js {:className "notification"}
                (dom/div #js {:className "notification-inner uk-panel uk-panel-box"} "Notification")))))
 
-(defn playback-controls-view [app state]
-  (dom/div #js {:className "uk-panel uk-panel-box"}
-           (om/build backward-button app {:init-state state})
-           (om/build playpause-button app {:init-state state})
-           (om/build forward-button app {:init-state state})
-           (om/build current-track-view (:current-track app))))
+(defn playback-panel [app owner]
+  (reify
+    om/IRender
+    (render [_]
+      (let [comm (om/get-shared owner :comm)
+            local-state {:init-state {:comm comm}}]
+        (dom/div #js {:className "uk-width-1-1"}
+                 (dom/div #js {:className "uk-panel uk-panel-box"}
+                          (om/build backward-button app local-state)
+                          (om/build playpause-button app local-state)
+                          (om/build forward-button app local-state)
+                          (om/build current-track-view (:current-track app))))))))
+
+(defn central-panel [app owner]
+  (reify
+    om/IRender
+    (render [_]
+      (dom/div #js {:id "center-panel" :className "uk-width-4-5"}
+               (dom/div #js {:className "center-panel-content"}
+                        (queue-view app))
+               (om/build notification-view app))
+      )))
+
+(defn left-sidebar [app owner]
+  (reify
+    om/IRender
+    (render [_]
+      (dom/div #js {:id "main-sidebar" :className "uk-width-1-5"}
+               (dom/div #js {:className "uk-panel uk-panel-box"}
+                        (apply dom/ul #js {:className "uk-nav uk-nav-side"}
+                               (om/build-all sidebar-item (get-in gui-data [:left-sidebar :items]))))))))
 
 (defn playpause-playback [app cmd]
   "Starts playing or pauses depending on current player state.
@@ -160,26 +177,21 @@
 
 (defn trium-app [app owner]
   (reify
-    om/IInitState
-    (init-state [_]
-      {:comm (chan)})
     om/IWillMount
     (will-mount [_]
-      (let [comm (om/get-state owner :comm)]
+      (let [comm (om/get-shared owner :comm)]
         (go (loop []
               (apply handle-event app (<! comm))
               (recur)))))
-    om/IRenderState
-    (render-state [this state]
+    om/IRender
+    (render [_]
       (dom/div #js {:className "uk-grid"}
-               (dom/div #js {:id "main-sidebar" :className "uk-width-1-5"} (left-sidebar))
-               (dom/div #js {:id "center-panel" :className "uk-width-4-5"}
-                        (dom/div #js {:className "center-panel-content"}
-                                 (queue-view app))
-                        (om/build notification-view app))
-               (dom/div #js {:className "uk-width-1-1"} (playback-controls-view app state)))))
+               (om/build left-sidebar app)
+               (om/build central-panel app)
+               (om/build playback-panel app))))
     )
 
 ;(player/init)
 (om/root trium-app app-state
-         {:target (. js/document (getElementById "app"))})
+         {:target (. js/document (getElementById "app"))
+          :shared {:comm (chan)}})
