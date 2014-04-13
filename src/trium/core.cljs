@@ -4,7 +4,8 @@
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan <! timeout]]
             [trium.player :as player]
-            [trium.anim-utils :as anim])
+            [trium.anim-utils :as anim]
+            [trium.dom-utils :as dom-utils])
   )
 
 (enable-console-print!)
@@ -40,6 +41,7 @@
     ;; possible values: :playing :paused
     :player-state :paused
     :current-track nil
+    :current-notification nil
     }))
 
 (defn make-sidebar-item [{:keys [title icon badge]}]
@@ -103,22 +105,40 @@
                       (str (:title track) " "(:duration track))
                      "No track playing")))))
 
-(defn notification-view [app owner]
+(defn notification-view [notification owner]
   (reify
     om/IInitState
     (init-state [_]
-      {:y 0 :alpha 0})
-    om/IWillMount
-    (will-mount [_]
-      (anim/animate [0 0.5] [100 1] 500 :easeOut (fn [type [y alpha]]
-                                                   (when (= type :animate)
-                                                     (om/set-state! owner :y y)
-                                                     (om/set-state! owner  :alpha alpha)))))
+      {:y (- 800) :alpha 0 :id "notification-1"})
+    om/IDidMount
+    (did-mount [_]
+      ;; note that height calculation depens on element being in dom => IDidMount usage
+      (let [height (dom-utils/height (dom-utils/by-id (om/get-state owner :id)))
+            hidden [(- height) 0]
+            visible [0 1]
+            duration 300
+            anim-fn (fn [type [y alpha]]
+                      (when (= type :animate)
+                        (om/set-state! owner :y y)
+                        (om/set-state! owner  :alpha alpha)))]
+        (anim/animate hidden visible duration :easeOut anim-fn)
+        (let [comm (om/get-state owner :comm)]
+          (go (loop []
+                (let [command (<! comm)]
+                  ;; other possibilities for future - minimize... ?
+                  (when (= :close command)
+                    (anim/animate visible hidden duration :easeOut
+                                  (fn [t v]
+                                    (anim-fn t v)
+                                    (when (= :end t)
+                                      (om/update! notification nil))))))
+                (recur))))))
     om/IRenderState
     (render-state [this state]
-      (dom/div #js {:className "notification" :style #js {:bottom (str (:y state) "px")
-                                                          :opacity (:alpha state)}}
-               (dom/div #js {:className "notification-inner uk-panel uk-panel-box"} "Notification")))))
+      (dom/div #js {:id (:id state) :className "notification" :style #js {:bottom (str (:y state) "px")
+                                                                          :opacity (:alpha state)
+                                                                          }}
+               (dom/div #js {:className "notification-inner uk-panel uk-panel-box"} (:text notification))))))
 
 (defn playback-panel [app owner]
   (reify
@@ -140,7 +160,8 @@
       (dom/div #js {:id "center-panel" :className "uk-width-4-5"}
                (dom/div #js {:className "center-panel-content"}
                         (queue-view app))
-               (om/build notification-view app))
+               (when-let [n (:current-notification app)]
+                 (om/build notification-view n {:init-state (select-keys n [:comm])})))
       )))
 
 (defn left-sidebar [app owner]
@@ -155,6 +176,12 @@
 (defn playpause-playback [app cmd]
   "Starts playing or pauses depending on current player state.
  Returns a channel to which a new player state will be put when it changes"
+
+  (if-let [notification (:current-notification @app)]
+    (put! (:comm notification) :close)
+    (om/transact! app (fn [app] (let [notify-comm (chan)]
+                                  (assoc app :current-notification {:text "Ennui art party freegan stumptown deep v disrupt. Kogi brunch mumblecore, Pitchfork pop-up sartorial chia bicycle rights Banksy twee bespoke. Cliche put a bird on it Neutra chillwave. Whatever hella American Apparel gastropub bitters. Art party wolf tote bag, cardigan asymmetrical Truffaut messenger bag put a bird on it deep v selvage meggings leggings. Cardigan pop-up kale chips tousled, single-origin coffee scenester biodiesel polaroid Vice drinking vinegar Pinterest pork belly kitsch Wes Anderson. 90's American Apparel post-ironic, squid biodiesel normcore Bushwick trust fund 8-bit Neutra cardigan food truck." :comm notify-comm}))))
+    )
   (let [comm (chan)]
     (if (= :play cmd)
       (player/play {:title "Track" :file "/home/file.mp3"} comm)
@@ -163,7 +190,7 @@
 (defn handle-playback-cmd [app cmd]
   (cond
    (or (= :play cmd) (= :pause cmd))
-   (let [ch (playpause-playback @app cmd)]
+   (let [ch (playpause-playback app cmd)]
      ;; change player state right away and then wait for track to be
      ;; loaded and details to arrive
      (om/transact! app (fn [app] (assoc app :player-state
@@ -205,5 +232,5 @@
 
 ;(player/init)
 (om/root trium-app app-state
-         {:target (. js/document (getElementById "app"))
+         {:target (dom-utils/by-id "app")
           :shared {:comm (chan)}})
