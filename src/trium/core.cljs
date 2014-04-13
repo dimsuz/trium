@@ -3,7 +3,9 @@
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan <! timeout]]
-            [trium.player :as player]))
+            [trium.player :as player]
+            [trium.anim-utils :as anim])
+  )
 
 (enable-console-print!)
 
@@ -103,9 +105,19 @@
 
 (defn notification-view [app owner]
   (reify
-    om/IRender
-    (render [_]
-      (dom/div #js {:className "notification"}
+    om/IInitState
+    (init-state [_]
+      {:y 0 :alpha 0})
+    om/IWillMount
+    (will-mount [_]
+      (anim/animate [0 0.5] [100 1] 500 :easeOut (fn [type [y alpha]]
+                                                   (when (= type :animate)
+                                                     (om/set-state! owner :y y)
+                                                     (om/set-state! owner  :alpha alpha)))))
+    om/IRenderState
+    (render-state [this state]
+      (dom/div #js {:className "notification" :style #js {:bottom (str (:y state) "px")
+                                                          :opacity (:alpha state)}}
                (dom/div #js {:className "notification-inner uk-panel uk-panel-box"} "Notification")))))
 
 (defn playback-panel [app owner]
