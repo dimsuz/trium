@@ -138,7 +138,11 @@
       (dom/div #js {:id (:id state) :className "notification" :style #js {:bottom (str (:y state) "px")
                                                                           :opacity (:alpha state)
                                                                           }}
-               (dom/div #js {:className "notification-inner uk-panel uk-panel-box"} (:text notification))))))
+               (dom/div #js {:className "notification-inner uk-panel uk-panel-box"}
+                        (:text notification)
+                        (dom/div #js {:className "uk-progress uk-progress-mini uk-progress-striped uk-active"}
+                                 (dom/div #js {:className "uk-progress-bar" :style #js {:width "100%"}}))
+                        (dom/button #js {:className "uk-button uk-button-small uk-float-right"} "Wrong folder, choose another"))))))
 
 (defn playback-panel [app owner]
   (reify
@@ -180,7 +184,7 @@
   (if-let [notification (:current-notification @app)]
     (put! (:comm notification) :close)
     (om/transact! app (fn [app] (let [notify-comm (chan)]
-                                  (assoc app :current-notification {:text "Ennui art party freegan stumptown deep v disrupt. Kogi brunch mumblecore, Pitchfork pop-up sartorial chia bicycle rights Banksy twee bespoke. Cliche put a bird on it Neutra chillwave. Whatever hella American Apparel gastropub bitters. Art party wolf tote bag, cardigan asymmetrical Truffaut messenger bag put a bird on it deep v selvage meggings leggings. Cardigan pop-up kale chips tousled, single-origin coffee scenester biodiesel polaroid Vice drinking vinegar Pinterest pork belly kitsch Wes Anderson. 90's American Apparel post-ironic, squid biodiesel normcore Bushwick trust fund 8-bit Neutra cardigan food truck." :comm notify-comm}))))
+                                  (assoc app :current-notification {:text "Detected music folder: '/home/dimka/Music', scanning it..." :comm notify-comm}))))
     )
   (let [comm (chan)]
     (if (= :play cmd)
