@@ -5,7 +5,8 @@
             [cljs.core.async :refer [put! chan <! timeout]]
             [trium.player :as player]
             [trium.anim-utils :as anim]
-            [trium.dom-utils :as dom-utils])
+            [trium.dom-utils :as dom-utils]
+            [trium.storage :as storage])
   )
 
 (enable-console-print!)
@@ -234,6 +235,7 @@
                (om/build playback-panel app))))
     )
 
+(storage/create-and-fill-database)
 ;(player/init)
 (om/root trium-app app-state
          {:target (dom-utils/by-id "app")
