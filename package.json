@@ -1,4 +1,7 @@
 {
-  "name": "ant",
-  "main": "index.html"
+  "name": "trium",
+  "main": "index.html",
+  "dependencies": {
+    "nedb": "^0.10.5"
+  }
 }
