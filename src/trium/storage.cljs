@@ -139,11 +139,15 @@ Returns a channel from which a resulting map can be read on completion"
 map of {'artist1' => 'id1', 'artist2' => 'id2'}"
   (apply merge (map #(apply hash-map (vals %)) artists)))
 
+(defn resolve-track-links [tracks artists-map]
+  (map #(assoc % :artist (get artists-map (:artist %))) tracks)
+  )
+
 (defn insert-tracks! [db tracks]
   (go
     (let [artists (get-distinct-artists tracks)
           aname-id-map (artists-to-name-id-map (<! (resolve-artists db artists)))]
-      (println "Received id " (get aname-id-map "Burial"))))
+      (println (resolve-track-links tracks aname-id-map))))
   )
 
 (defn create-and-fill-database []
