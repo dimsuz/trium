@@ -112,7 +112,9 @@ Returns a channel from which a resulting map can be read on completion"
   ch)
 
 
-(defn resolve-artists [db artists]
+(defn resolve-artists! [db artists]
+  "Given an artist data, searches for artist DB id and if not found, inserts one in DB and assoc's its id to the data.
+Returns a channel which will contain a single item - the collection with artist data, e.g. [{:name '...' :_id '...'}]"
   (let [c (chan)
         out-ch (chan)]
     (go
@@ -146,7 +148,10 @@ map of {'artist1' => 'id1', 'artist2' => 'id2'}"
 (defn insert-tracks! [db tracks]
   (go
     (let [artists (get-distinct-artists tracks)
-          aname-id-map (artists-to-name-id-map (<! (resolve-artists db artists)))]
+          ;; this map will contain valid ids for artists from all the passed tracks
+          ;; (missing artists will be added to db by resolve-artists!)
+          aname-id-map (artists-to-name-id-map (<! (resolve-artists! db artists)))
+          ]
       (println (resolve-track-links tracks aname-id-map))))
   )
 
