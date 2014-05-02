@@ -21,7 +21,10 @@
                  {:title "Ghost Hardware" :album "Untrue" :artist "Burial"
                   :source "/home/dimka/Home/dimka/Music/Burial/Untrue/04 Ghost Hardware.mp3"}
                  {:title "Etched Headplate" :album "Untrue" :artist "Burial"
-                  :source "/home/dimka/Home/dimka/Music/Burial/Untrue/06 Etched Headplate.mp3"}])
+                  :source "/home/dimka/Home/dimka/Music/Burial/Untrue/06 Etched Headplate.mp3"}
+
+                 {:title "Some track" :album "Untrue" :artist "not-Burial" :source "/home/dimka/unknown.mp3"}
+                 ])
 
 ;; due to having two different JS contexts: nodejs and webkit's, types
 ;; of Objects do not match between them. So extending this protocol so that
@@ -133,7 +136,17 @@ Returns a channel which will contain a single item - the collection with artist 
   (distinct (map (fn [t]
                    (-> t
                        (select-keys [:artist])
-                       (rename-keys {:artist :name})))
+                       (rename-keys {:artist :name})
+                       (assoc :type :artist)))
+                 tracks)))
+
+(defn get-distinct-albums [tracks]
+  "Returns a seq of album data, like {:name '...', :artist 'id', :type :album}"
+  (distinct (map (fn [t]
+                   (-> t
+                       (select-keys [:album :artist])
+                       (rename-keys {:album :name})
+                       (assoc :type :album)))
                  tracks)))
 
 (defn artists-to-name-id-map [artists]
@@ -147,10 +160,15 @@ map of {'artist1' => 'id1', 'artist2' => 'id2'}"
 
 (defn insert-tracks! [db tracks]
   (go
+    ;; (missing-from-db artists/albums will be added to db by resolve! functions)
     (let [artists (get-distinct-artists tracks)
-          ;; (missing artists will be added to db by resolve-artists!)
-          resolved-artists (<! (resolve-artists! db artists))]
-      (println (resolve-track-links tracks resolved-artists))))
+          resolved-artists (<! (resolve-artists! db artists))
+          albums (get-distinct-albums tracks)
+          resolved-albums (<! (resolve-albums! db resolved-artists albums))
+          ]
+      (println albums)
+      ;(println (resolve-track-links tracks resolved-artists))
+      ))
   )
 
 (defn create-and-fill-database []
