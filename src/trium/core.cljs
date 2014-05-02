@@ -81,7 +81,10 @@
             command (if paused? :play :pause)]
         (dom/a #js {:href "#" :className (str "uk-icon-button " icon)
                     :onClick (fn [e]
-                               (put! comm [:playback-command command]))} nil)))))
+                               ;(put! comm [:playback-command command])
+                               ;; FIXME return above, current is temp
+                               (put! comm [:db-command :noop])
+                               )} nil)))))
 
 (defn forward-button [app owner]
   (reify
@@ -216,6 +219,7 @@
 (defn handle-event [app type value]
   (cond
    (= type :playback-command) (handle-playback-cmd app value)
+   (= type :db-command) (storage/test-reinsert-mock-data)
    :else
    (prn (str "don't know how to handle event " type " - " value))))
 
