@@ -23,6 +23,38 @@
                  {:title "Etched Headplate" :album "Untrue" :artist "Burial"
                   :source "/home/dimka/Home/dimka/Music/Burial/Untrue/06 Etched Headplate.mp3"}])
 
+;; due to having two different JS contexts: nodejs and webkit's, types
+;; of Objects do not match between them. So extending this protocol so that
+;; js->clj correctly recognizes end encodes Objects created in webkit context.
+;; this is mostly the copy of cljs.core (js->clj) function
+(extend-protocol IEncodeClojure
+  object
+  (-js->clj
+    ([x {:keys [keywordize-keys] :as options}]
+       (let [keyfn (if keywordize-keys keyword str)
+             f (fn thisfn [x]
+                 (cond
+                  (seq? x)
+                  (doall (map thisfn x))
+
+                  (coll? x)
+                  (into (empty x) (map thisfn x))
+
+                  (array? x)
+                  (vec (map thisfn x))
+
+                  ;; this is the changed part - added 'or'
+                  (or (identical? (type x) js/Object)
+                      (identical? (type x) (.-Object js/global)))
+                  (into {} (for [k (js-keys x)]
+                             [(keyfn k) (thisfn (aget x k))]))
+
+                  :else x))]
+         (f x)))
+    ([x] (-js->clj x {:keywordize-keys false}))))
+
+(def db-conn (atom nil))
+
 (defn create-database []
   (let [Datastore (js/require "nedb")]
     (Datastore.)))
@@ -30,60 +62,80 @@
 (def next-id (atom 0))
 (defn gen-id [] (swap! next-id inc))
 
-(defn findOne [db query-req ch]
-  (.findOne db (clj->js (:query query-req)) (fn [err doc] (put! ch {:id (:id query-req) :res doc :err err})))
+(defn stringify [obj]
+  (.stringify js/JSON obj))
+
+(defn db-find-one [db ch query-req]
+  (.findOne db (clj->js (:query query-req)) (fn [err doc] (put! ch
+                                                                {:id (:id query-req)
+                                                                 :res (js->clj doc :keywordize-keys true)
+                                                                 :err err})))
   ch)
 
-;; TODO sink with count
-(defn sink
-  "Returns an atom containing a vector. Consumes values from channel
-  ch and conj's them into the atom."
-  [ch]
-  (let [a (atom [])]
-    (go
-      (loop []
-        (let [val (<! ch)]
-          (when-not (nil? val)
-            (swap! a conj val)
-            (recur)))))
-    @a))
+(defn db-insert [db ch record]
+  (.insert db (clj->js record) (fn [err doc]
+                                  (if err
+                                    (put! ch {:error (str "failed to insert record " record ", error " err)})
+                                    (put! ch (js->clj doc :keywordize-keys true)))))
+  ch)
 
 (defn query-req [query]
   (hash-map :id (gen-id) :query query))
 
+;; FIXME remove this, is it used?
 (defn artists-of [db tracks]
   (let [queries (map hash-map (repeat :name) (distinct (map :artist tracks)))
         query-reqs (map query-req queries)
         ch (chan)
         outch (chan)
         ]
-    (println query-reqs)
     ;; run all queries and close the channel
     (go
       (doseq [req query-reqs]
-        (let [res (<! (findOne db req ch))]
+        (let [res (<! (db-find-one db ch req))]
           (put! outch (if-let [artist (:res res)] artist :no-artist))))
       (close! ch)
       (close! outch))
     outch))
 
-(defn resolve-artist-id [artist]
+(defn resolve-artist-id [db ch artist]
   "given an {:name '...'} map adds an :id key to it with DB id or nil if missing in DB.
 Returns a channel from which a resulting map can be read on completion"
+  (go
+    (let [query-res (<! (db-find-one db (chan) (query-req artist)))]
+      (if-let [err (:error query-res)]
+        (put! ch {:error (str "failed to query for artist " (:name artist) ", " err)})
+        (if-let [a (:res query-res)]
+          (put! ch a) ;; put artist as it is in db (with :id)
+          (put! ch artist) ;; put original artist data, unresolved
+          ))))
+  ch)
 
-  )
-
-(defn add-missing-artists [artists]
-  (let [c (chan)]
-    )
-  )
 
 (defn get-artists [tracks]
+  "Returns a seq of artist data, like {:name '...', ...}"
   (distinct (map (fn [t]
                    (-> t
                        (select-keys [:artist])
                        (rename-keys {:artist :name})))
                  tracks)))
+
+
+
+(defn resolve-artist-ids [db tracks]
+  (let [artists (get-artists tracks)
+        c (chan)
+        out-ch (chan)]
+    (go
+      (doseq [a artists]
+        (let [ra (<! (resolve-artist-id db c a))]
+          (when (:error ra) (println (str "warning! error while searching for artist "
+                                          a ", will try to insert it anyway")))
+          (if (:_id ra)
+            (put! out-ch ra)
+            (put! out-ch (<! (db-insert db c a))))))
+      (close! out-ch))
+    (async/into [] out-ch)))
 
 (defn insert-tracks! [db tracks]
   ;; goal => loop each distinct artist filter out those which are missing, add them, then proceed with adding
@@ -91,21 +143,20 @@ Returns a channel from which a resulting map can be read on completion"
   ;; transform tracks array to array of distinct artist names {:name } {:name }
   ;; inside add-missing-artists:
   ;; doseq resolve-artist-id => chan => [{:name '...' :id '...'} {:name '...' :id :no-id}] => (map< chan) => chan [{:name '...' :id :no-id} {:no-id}] =>
-
-  (let [artists get-artists]
-    (go
-      ;; reading from chanel here is a noop => just wait until adding is complete
-      (<! (add-missing-artists artists))
-      ;; TODO actual insert
-      )
-))
+  (go (println "Received" (<! (resolve-artist-ids db tracks))))
+  )
 
 (defn create-and-fill-database []
-  (let [db (create-database)
+  (let [db (reset! db-conn (create-database))
         doc #js { :title "Hello"}]
     ;(.insert db doc #(.find db #js {} (fn [_ docs] (println (JSON/stringify docs)))))
     (insert-tracks! db mock-data)
     ))
+
+;; FIXME temp
+(defn test-reinsert-mock-data []
+  (insert-tracks! @db-conn mock-data)
+  )
 
 ;; (query {:group-by :albums}) => {:albums (lazy-seq [{:title "Album1" :cover "/path/to/cover" :tracks (lazy-seq [{:title "track1"}])}
 ;;                                                    {:title "Album1" :cover "/path/to/cover" :tracks (lazy-seq [{:title "track1"}])}])}
