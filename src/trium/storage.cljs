@@ -141,18 +141,16 @@ Returns a channel which will contain a single item - the collection with artist 
 map of {'artist1' => 'id1', 'artist2' => 'id2'}"
   (apply merge (map #(apply hash-map (vals %)) artists)))
 
-(defn resolve-track-links [tracks artists-map]
-  (map #(assoc % :artist (get artists-map (:artist %))) tracks)
-  )
+(defn resolve-track-links [tracks artists]
+  (let [artists-name-id (artists-to-name-id-map artists)]
+    (map #(assoc % :artist (get artists-name-id (:artist %))) tracks)))
 
 (defn insert-tracks! [db tracks]
   (go
     (let [artists (get-distinct-artists tracks)
-          ;; this map will contain valid ids for artists from all the passed tracks
           ;; (missing artists will be added to db by resolve-artists!)
-          aname-id-map (artists-to-name-id-map (<! (resolve-artists! db artists)))
-          ]
-      (println (resolve-track-links tracks aname-id-map))))
+          resolved-artists (<! (resolve-artists! db artists))]
+      (println (resolve-track-links tracks resolved-artists))))
   )
 
 (defn create-and-fill-database []
