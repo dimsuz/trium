@@ -98,7 +98,7 @@
       (close! outch))
     outch))
 
-(defn resolve-artist-id [db ch artist]
+(defn resolve-artist [db ch artist]
   "given an {:name '...'} map adds an :id key to it with DB id or nil if missing in DB.
 Returns a channel from which a resulting map can be read on completion"
   (go
@@ -112,23 +112,12 @@ Returns a channel from which a resulting map can be read on completion"
   ch)
 
 
-(defn get-artists [tracks]
-  "Returns a seq of artist data, like {:name '...', ...}"
-  (distinct (map (fn [t]
-                   (-> t
-                       (select-keys [:artist])
-                       (rename-keys {:artist :name})))
-                 tracks)))
-
-
-
-(defn resolve-artist-ids [db tracks]
-  (let [artists (get-artists tracks)
-        c (chan)
+(defn resolve-artists [db artists]
+  (let [c (chan)
         out-ch (chan)]
     (go
       (doseq [a artists]
-        (let [ra (<! (resolve-artist-id db c a))]
+        (let [ra (<! (resolve-artist db c a))]
           (when (:error ra) (println (str "warning! error while searching for artist "
                                           a ", will try to insert it anyway")))
           (if (:_id ra)
@@ -137,13 +126,24 @@ Returns a channel from which a resulting map can be read on completion"
       (close! out-ch))
     (async/into [] out-ch)))
 
+(defn get-distinct-artists [tracks]
+  "Returns a seq of artist data, like {:name '...', ...}"
+  (distinct (map (fn [t]
+                   (-> t
+                       (select-keys [:artist])
+                       (rename-keys {:artist :name})))
+                 tracks)))
+
+(defn artists-to-name-id-map [artists]
+  "Takes a seq of maps [{:name 'artist1' :id 'id1'} ...], returns a joined
+map of {'artist1' => 'id1', 'artist2' => 'id2'}"
+  (apply merge (map #(apply hash-map (vals %)) artists)))
+
 (defn insert-tracks! [db tracks]
-  ;; goal => loop each distinct artist filter out those which are missing, add them, then proceed with adding
-  ;; all tracks, artists will exist 100%
-  ;; transform tracks array to array of distinct artist names {:name } {:name }
-  ;; inside add-missing-artists:
-  ;; doseq resolve-artist-id => chan => [{:name '...' :id '...'} {:name '...' :id :no-id}] => (map< chan) => chan [{:name '...' :id :no-id} {:no-id}] =>
-  (go (println "Received" (<! (resolve-artist-ids db tracks))))
+  (go
+    (let [artists (get-distinct-artists tracks)
+          aname-id-map (artists-to-name-id-map (<! (resolve-artists db artists)))]
+      (println "Received id " (get aname-id-map "Burial"))))
   )
 
 (defn create-and-fill-database []
