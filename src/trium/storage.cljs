@@ -172,11 +172,8 @@ Returns a channel from which a resulting entity can be read on completion"
       (println "inserted" (count tracks) "tracks," (count resolved-albums) "albums," (count resolved-artists) "artists"))))
 
 (defn create-and-fill-database []
-  (let [db (reset! db-conn (create-database))
-        doc #js { :title "Hello"}]
-    ;(.insert db doc #(.find db #js {} (fn [_ docs] (println (JSON/stringify docs)))))
-    (insert-tracks! db mock-data)
-    ))
+  (let [db (reset! db-conn (create-database))]
+    (insert-tracks! db mock-data)))
 
 ;; FIXME temp
 (defn test-reinsert-mock-data []
@@ -188,11 +185,3 @@ Returns a channel from which a resulting entity can be read on completion"
 ;; (query {:artist "Artist" :group-by :albums}) => {:albums (lazy-seq [])} ; albums of artist only
 ;; (query {:artist "Artist" :album "Album" :group-by :albums}) => {:albums (lazy-seq [])} ; single albums with album info
 ;; (query {:artist "Artist" :album "Album" ; no grouping}) => {:tracks (lazy-seq [])} ; signle album in tracks form
-
-(defn query [q]
-  ;; currently returns mocked data
-  ;; (if-let [artist (:artist q)]
-  ;;   (case (:artist q))
-  ;;   ;; no query given
-  ;;   (merge-with #(concat %1 %2) (query {:artist "Burial"}) (query {:artist "Bosques de mi Mente"})))
-  )
