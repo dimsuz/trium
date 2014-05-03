@@ -1,7 +1,8 @@
 (ns trium.storage
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [cljs.core.async :as async :refer [put! chan <! close!]]
-            [clojure.set :refer [rename-keys]])
+            [clojure.set :refer [rename-keys]]
+            [trium.utils :refer [find-first]])
   )
 
 (def mock-data [ {:title "Es un sombrero" :album "Inocencia" :artist "Bosques de mi Mente"
@@ -69,6 +70,8 @@
   (.stringify js/JSON obj))
 
 (defn db-find-one [db ch query-req]
+  "A generic version of DB query which labels each result with :id which can be used in certain parallel scenarios,
+when many requests are run and then collected back together. Dunno if this will ever be needed, may reconsider."
   (.findOne db (clj->js (:query query-req)) (fn [err doc] (put! ch
                                                                 {:id (:id query-req)
                                                                  :res (js->clj doc :keywordize-keys true)
@@ -85,89 +88,77 @@
 (defn query-req [query]
   (hash-map :id (gen-id) :query query))
 
-;; FIXME remove this, is it used?
-(defn artists-of [db tracks]
-  (let [queries (map hash-map (repeat :name) (distinct (map :artist tracks)))
-        query-reqs (map query-req queries)
-        ch (chan)
-        outch (chan)
-        ]
-    ;; run all queries and close the channel
-    (go
-      (doseq [req query-reqs]
-        (let [res (<! (db-find-one db ch req))]
-          (put! outch (if-let [artist (:res res)] artist :no-artist))))
-      (close! ch)
-      (close! outch))
-    outch))
-
-(defn resolve-artist [db ch artist]
-  "given an {:name '...'} map adds an :id key to it with DB id or nil if missing in DB.
-Returns a channel from which a resulting map can be read on completion"
+(defn find-one [db ch query]
+  "executes a query and returns a found entity or an empty map if not found.
+Returns a channel from which a resulting entity can be read on completion"
   (go
-    (let [query-res (<! (db-find-one db (chan) (query-req artist)))]
+    (let [query-res (<! (db-find-one db (chan) (query-req query)))]
       (if-let [err (:error query-res)]
-        (put! ch {:error (str "failed to query for artist " (:name artist) ", " err)})
-        (if-let [a (:res query-res)]
-          (put! ch a) ;; put artist as it is in db (with :id)
-          (put! ch artist) ;; put original artist data, unresolved
-          ))))
+        (put! ch {:error (str "failed to run query " query ": " err)})
+        (put! ch (if-let [r (:res query-res)] r {})))))
   ch)
 
-
-(defn resolve-artists! [db artists]
-  "Given an artist data, searches for artist DB id and if not found, inserts one in DB and assoc's its id to the data.
-Returns a channel which will contain a single item - the collection with artist data, e.g. [{:name '...' :_id '...'}]"
+(defn resolve-entities! [db entity-coll query-keys]
+  "Searches for entities in DB and inserts those missing. Each entity is searched by constructing a query using passed query keys. Returns a channel which will contain a single item - the collection with entities, all of which will have a valid db id e.g. [{:name '...' :_id '...'}]"
   (let [c (chan)
         out-ch (chan)]
     (go
-      (doseq [a artists]
-        (let [ra (<! (resolve-artist db c a))]
-          (when (:error ra) (println (str "warning! error while searching for artist "
-                                          a ", will try to insert it anyway")))
-          (if (:_id ra)
-            (put! out-ch ra)
-            (put! out-ch (<! (db-insert db c a))))))
+      (doseq [e entity-coll]
+        (let [re (<! (find-one db c (select-keys e query-keys)))]
+          (when (:error re) (println (str "warning! error while searching for entity "
+                                          e ", will try to insert it anyway")))
+          ;; if not found, need to insert...
+          (if (:_id re)
+            (put! out-ch re)
+            (put! out-ch (<! (db-insert db c e))))))
       (close! out-ch))
     (async/into [] out-ch)))
 
 (defn get-distinct-artists [tracks]
   "Returns a seq of artist data, like {:name '...', ...}"
-  (distinct (map (fn [t]
-                   (-> t
-                       (select-keys [:artist])
-                       (rename-keys {:artist :name})
-                       (assoc :type :artist)))
-                 tracks)))
+  (->> tracks
+       (map (fn [t]
+              (-> t
+                  (select-keys [:artist])
+                  (rename-keys {:artist :name})
+                  (assoc :type :artist))))
+       (distinct)))
 
-(defn get-distinct-albums [tracks]
+(defn get-distinct-albums [tracks resolved-artists]
   "Returns a seq of album data, like {:name '...', :artist 'id', :type :album}"
-  (distinct (map (fn [t]
-                   (-> t
-                       (select-keys [:album :artist])
-                       (rename-keys {:album :name})
-                       (assoc :type :album)))
-                 tracks)))
+  (->> tracks
+      (map (fn [t]
+             (-> t
+                 (select-keys [:album :artist])
+                 (rename-keys {:album :name})
+                 (assoc :type :album))))
+      (distinct)
+      (map (fn [a]
+             (let [artist-id (:_id (find-first #(= (:name %) (:artist a)) resolved-artists))]
+               (assoc a :artist artist-id))))))
 
-(defn artists-to-name-id-map [artists]
-  "Takes a seq of maps [{:name 'artist1' :id 'id1'} ...], returns a joined
-map of {'artist1' => 'id1', 'artist2' => 'id2'}"
-  (apply merge (map #(apply hash-map (vals %)) artists)))
-
-(defn resolve-track-links [tracks artists]
-  (let [artists-name-id (artists-to-name-id-map artists)]
-    (map #(assoc % :artist (get artists-name-id (:artist %))) tracks)))
+(defn resolve-track-links [tracks artists albums]
+  (map (fn [t]
+         (let [artist-id (:_id (find-first #(= (:name %) (:artist t))
+                                           artists))
+               album-id (:_id (find-first  #(and (= (:name %) (:album t) )
+                                                 (= (:artist %) artist-id))
+                                           albums))]
+           (assoc t
+             :artist artist-id
+             :album album-id)))
+       tracks))
 
 (defn insert-tracks! [db tracks]
   (go
     ;; (missing-from-db artists/albums will be added to db by resolve! functions)
     (let [artists (get-distinct-artists tracks)
-          resolved-artists (<! (resolve-artists! db artists))
-          albums (get-distinct-albums tracks)
-          resolved-albums (<! (resolve-albums! db resolved-artists albums))
+          resolved-artists (<! (resolve-entities! db artists [:name :type]))
+          albums (get-distinct-albums tracks resolved-artists)
+          resolved-albums (<! (resolve-entities! db albums [:name :artist :type]))
           ]
-      (println albums)
-      ;(println (resolve-track-links tracks resolved-artists))
+;      (println resolved-albums)
+      (println (resolve-track-links tracks resolved-artists resolved-albums))
       ))
   )
 
