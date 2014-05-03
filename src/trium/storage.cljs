@@ -161,11 +161,15 @@ Returns a channel from which a resulting entity can be read on completion"
           resolved-artists (<! (resolve-entities! db artists [:name :type]))
           albums (get-distinct-albums tracks resolved-artists)
           resolved-albums (<! (resolve-entities! db albums [:name :artist :type]))
-          ]
-;      (println resolved-albums)
-      (println (resolve-track-links tracks resolved-artists resolved-albums))
-      ))
-  )
+          ins-chan (chan)
+          insert-track (fn [t] (db-insert db ins-chan t))]
+      (doseq [t tracks]
+        ;; insert sequentially - one after another (use <! to wait for insertion to happen)
+        (<! (-> t
+                (resolve-track-links resolved-artists resolved-albums)
+                (insert-track))))
+      ;; FIXME error checking!!!
+      (println "inserted" (count tracks) "tracks," (count resolved-albums) "albums," (count resolved-artists) "artists"))))
 
 (defn create-and-fill-database []
   (let [db (reset! db-conn (create-database))
