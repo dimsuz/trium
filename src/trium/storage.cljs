@@ -72,17 +72,22 @@
 (defn db-find-one [db ch query-req]
   "A generic version of DB query which labels each result with :id which can be used in certain parallel scenarios,
 when many requests are run and then collected back together. Dunno if this will ever be needed, may reconsider."
-  (.findOne db (clj->js (:query query-req)) (fn [err doc] (put! ch
-                                                                {:id (:id query-req)
-                                                                 :res (js->clj doc :keywordize-keys true)
-                                                                 :err err})))
+  (.findOne db
+            (clj->js (:query query-req))
+            (fn [err doc]
+              (when err (println "db error while finding" query-req))
+              (put! ch
+                    {:id (:id query-req)
+                     :res (js->clj doc :keywordize-keys true)
+                     :err err})))
   ch)
 
 (defn db-insert [db ch record]
   (.insert db (clj->js record) (fn [err doc]
-                                  (if err
-                                    (put! ch {:error (str "failed to insert record " record ", error " err)})
-                                    (put! ch (js->clj doc :keywordize-keys true)))))
+                                 (when err (println "db error while inserting" record))
+                                 (if err
+                                   (put! ch {:error (str "failed to insert record " record ", error " err)})
+                                   (put! ch (js->clj doc :keywordize-keys true)))))
   ch)
 
 (defn query-req [query]
@@ -137,17 +142,17 @@ Returns a channel from which a resulting entity can be read on completion"
              (let [artist-id (:_id (find-first #(= (:name %) (:artist a)) resolved-artists))]
                (assoc a :artist artist-id))))))
 
-(defn resolve-track-links [tracks artists albums]
-  (map (fn [t]
-         (let [artist-id (:_id (find-first #(= (:name %) (:artist t))
-                                           artists))
-               album-id (:_id (find-first  #(and (= (:name %) (:album t) )
-                                                 (= (:artist %) artist-id))
-                                           albums))]
-           (assoc t
-             :artist artist-id
-             :album album-id)))
-       tracks))
+(defn resolve-track-links [t artists albums]
+  (let [artist-id (:_id (find-first #(= (:name %) (:artist t))
+                                    artists))
+        album-id (:_id (find-first  #(and (= (:name %) (:album t) )
+                                          (= (:artist %) artist-id))
+                                    albums))]
+    (when (nil? artist-id) (println "Warning failed to get artist id"))
+    (when (nil? album-id) (println "Warning failed to get album id"))
+    (assoc t
+      :artist artist-id
+      :album album-id)))
 
 (defn insert-tracks! [db tracks]
   (go
