@@ -13,13 +13,13 @@
 
 (def gui-data
   {:left-sidebar {:items [{:title "MAIN" :type :header}
-                          {:title "Play Queue" :icon "uk-icon-bars"}
+                          {:title "Play Queue" :id :queue :icon "uk-icon-bars"}
                           {:title "News" :icon "uk-icon-rss" :badge "3"}
                           {:title "COLLECTION" :type :header}
-                          {:title "Library" :icon "uk-icon-folder"}
-                          {:title "Favorites" :icon "uk-icon-star"}
-                          {:title "History" :icon "uk-icon-suitcase"}
-                          {:title "Files" :icon "uk-icon-folder-open"}
+                          {:title "Library" :id :library :icon "uk-icon-folder"}
+                          {:title "Favorites" :id :favorites :icon "uk-icon-star"}
+                          {:title "History" :id :history :icon "uk-icon-suitcase"}
+                          {:title "Files" :id :files :icon "uk-icon-folder-open"}
                           {:title "PLAYLISTS" :type :header}
                           {:title "Chillout" :icon "uk-icon-music"}
                           {:title "Jazz" :icon "uk-icon-music"}
@@ -43,10 +43,15 @@
     :player-state :paused
     :current-track nil
     :current-notification nil
+    :selected-section :queue
     }))
 
-(defn make-sidebar-item [{:keys [title icon badge]}]
-  (dom/li nil
+(defn make-sidebar-item [{:keys [title icon badge id active]} owner]
+  (dom/li #js {:className (when active "uk-active")
+               :onClick (fn [e]
+                          (when id
+                            (let [comm (om/get-shared owner :comm)]
+                              (put! comm [:section-change id]))))}
           (dom/a nil
                  (when icon (dom/i #js {:className icon}))
                  (str " " title " ")
@@ -58,7 +63,7 @@
     (render [_]
       (if (= :header (:type item))
         (dom/li #js {:className "uk-nav-header"} (:title item))
-        (make-sidebar-item item)))))
+        (make-sidebar-item item owner)))))
 
 (defn queue-row [track owner]
   (reify
@@ -179,7 +184,11 @@
       (dom/div #js {:id "main-sidebar" :className "uk-width-1-5"}
                (dom/div #js {:className "uk-panel uk-panel-box"}
                         (apply dom/ul #js {:className "uk-nav uk-nav-side"}
-                               (om/build-all sidebar-item (get-in gui-data [:left-sidebar :items]))))))))
+                               (om/build-all sidebar-item
+                                             (map
+                                               #(assoc %
+                                                 :active (= (:selected-section app) (:id %)))
+                                               (get-in gui-data [:left-sidebar :items])))))))))
 
 (defn playpause-playback [app cmd]
   "Starts playing or pauses depending on current player state.
@@ -220,6 +229,7 @@
   (cond
    (= type :playback-command) (handle-playback-cmd app value)
    (= type :db-command) (storage/test-reinsert-mock-data)
+   (= type :section-change) (om/transact! app #(assoc % :selected-section value))
    :else
    (prn (str "don't know how to handle event " type " - " value))))
 
