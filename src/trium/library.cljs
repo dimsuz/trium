@@ -9,24 +9,25 @@
   (reify
     om/IInitState
     (init-state [_]
-      {:query-chan (chan)})
+      {:query-chan (chan)
+       ; :query will be passed by the parent
+       })
     om/IWillMount
     (will-mount [_]
-      (let [query-chan (om/get-state owner :query-chan)]
-        (println "launching query...")
-        ((fn []
-           (go
-             (<! (timeout 3000))
-             (println "query completed")
-             (put! query-chan [1 3]))))
-        (go
-          (let [query-result (<! query-chan)]
-            (om/update-state! owner (fn [state] (assoc state :result query-result))))
-          )))
+      (let [query-chan (om/get-state owner :query-chan)
+            query (om/get-state owner :query)]
+        (if (not (and query (= :album (:type query))))
+          (println "error, query is nil or not an album query")
+          (go
+            (storage/find-many query query-chan)
+            (let [query-result (<! query-chan)]
+              (om/update-state! owner (fn [state] (assoc state :result query-result))))
+            ))))
     om/IRenderState
-    (render-state [_ state]
-      (println "rendering state" (om/get-state owner))
-      (dom/div nil (str "I am albums component with state" state))
+    (render-state [_ {:keys [result]}]
+      (when result
+        (.forEach result (fn [r] (println (js->clj r :keywordize-keys true)))))
+      (dom/div nil (str "I am albums component with state" result ))
       )
     )
   )
