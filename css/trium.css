@@ -9,6 +9,7 @@
 }
 .center-panel-content {
   max-height: 400px;
+  min-height: 400px; /* needed for notifications to apper correctly */
   overflow-y: auto;
 }
 

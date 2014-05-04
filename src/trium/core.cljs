@@ -6,7 +6,8 @@
             [trium.player :as player]
             [trium.anim-utils :as anim]
             [trium.dom-utils :as dom-utils]
-            [trium.storage :as storage])
+            [trium.storage :as storage]
+            [trium.library :as library])
   )
 
 (enable-console-print!)
@@ -24,16 +25,6 @@
                           {:title "Chillout" :icon "uk-icon-music"}
                           {:title "Jazz" :icon "uk-icon-music"}
                           {:title "Ambient" :icon "uk-icon-music"}
-                          {:title "Jazz" :icon "uk-icon-music"}
-                          {:title "Jazz" :icon "uk-icon-music"}
-                          {:title "Jazz" :icon "uk-icon-music"}
-                          {:title "Jazz" :icon "uk-icon-music"}
-                          {:title "Jazz" :icon "uk-icon-music"}
-                          {:title "Jazz" :icon "uk-icon-music"}
-                          {:title "Jazz" :icon "uk-icon-music"}
-                          {:title "Jazz" :icon "uk-icon-music"}
-                          {:title "Jazz" :icon "uk-icon-music"}
-                          {:title "Jazz" :icon "uk-icon-music"}
                           ]}})
 
 (def app-state
@@ -73,9 +64,12 @@
               (dom/td nil (:title track))))))
 
 (defn queue-view [app]
-  (dom/table #js {:className "uk-table"}
-             (apply dom/tbody nil
-                    (om/build-all queue-row (get-in app [:queue :tracks])))))
+  (reify
+    om/IRender
+    (render [_]
+      (dom/table #js {:className "uk-table"}
+                 (apply dom/tbody nil
+                        (om/build-all queue-row (get-in app [:queue :tracks])))))))
 
 (defn playpause-button [app owner]
   (reify
@@ -86,9 +80,7 @@
             command (if paused? :play :pause)]
         (dom/a #js {:href "#" :className (str "uk-icon-button " icon)
                     :onClick (fn [e]
-                               ;(put! comm [:playback-command command])
-                               ;; FIXME return above, current is temp
-                               (put! comm [:db-command :noop])
+                               (put! comm [:playback-command command])
                                )} nil)))))
 
 (defn forward-button [app owner]
@@ -172,7 +164,12 @@
     (render [_]
       (dom/div #js {:id "center-panel" :className "uk-width-4-5"}
                (dom/div #js {:className "center-panel-content"}
-                        (queue-view app))
+                        (condp = (:selected-section app)
+                         :library
+                         (om/build library/library-component app)
+
+                         :queue
+                         (om/build queue-view app)))
                (when-let [n (:current-notification app)]
                  (om/build notification-view n {:init-state (select-keys n [:comm])})))
       )))
@@ -228,7 +225,6 @@
 (defn handle-event [app type value]
   (cond
    (= type :playback-command) (handle-playback-cmd app value)
-   (= type :db-command) (storage/test-reinsert-mock-data)
    (= type :section-change) (om/transact! app #(assoc % :selected-section value))
    :else
    (prn (str "don't know how to handle event " type " - " value))))
