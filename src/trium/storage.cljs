@@ -69,17 +69,17 @@
 (defn stringify [obj]
   (.stringify js/JSON obj))
 
-(defn db-find-one [db ch query-req]
+(defn db-find [db findfn ch query-req]
   "A generic version of DB query which labels each result with :id which can be used in certain parallel scenarios,
 when many requests are run and then collected back together. Dunno if this will ever be needed, may reconsider."
-  (.findOne db
-            (clj->js (:query query-req))
-            (fn [err doc]
-              (when err (println "db error while finding" query-req))
-              (put! ch
-                    {:id (:id query-req)
-                     :res (js->clj doc :keywordize-keys true)
-                     :err err})))
+  (.call findfn db
+   (clj->js (:query query-req))
+   (fn [err doc]
+     (when err (println "db error while finding" query-req))
+     (put! ch
+           {:id (:id query-req)
+            :res (js->clj doc :keywordize-keys true)
+            :err err})))
   ch)
 
 (defn db-insert [db ch record]
@@ -93,15 +93,28 @@ when many requests are run and then collected back together. Dunno if this will 
 (defn query-req [query]
   (hash-map :id (gen-id) :query query))
 
-(defn find-one [db ch query]
-  "executes a query and returns a found entity or an empty map if not found.
-Returns a channel from which a resulting entity can be read on completion"
+(defn ^:private find-generic [db ch findfn query]
+  "executes a query and returns a found entity(-ies) or an empty map if not found.
+Returns a channel from which a result can be read on completion"
   (go
-    (let [query-res (<! (db-find-one db (chan) (query-req query)))]
+    (let [query-res (<! (db-find db findfn (chan) (query-req query)))]
       (if-let [err (:error query-res)]
         (put! ch {:error (str "failed to run query " query ": " err)})
         (put! ch (if-let [r (:res query-res)] r {})))))
   ch)
+
+(defn find-one [db ch query]
+  "executes a query and returns a found entity or an empty map if not found.
+Returns a channel from which a result can be read on completion"
+  (find-generic db ch (.-findOne db) query))
+
+(defn find-many
+  "executes a query and returns a found entities or an empty vec if none found.
+Returns a channel from which a result can be read on completion"
+  ([query ch]
+     (find-many @db-conn ch query))
+  ([db ch query]
+     (find-generic db ch (.-find db) query)))
 
 (defn resolve-entities! [db entity-coll query-keys]
   "Searches for entities in DB and inserts those missing. Each entity is searched by constructing a query using passed query keys. Returns a channel which will contain a single item - the collection with entities, all of which will have a valid db id e.g. [{:name '...' :_id '...'}]"
