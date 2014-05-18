@@ -1,9 +1,5 @@
 (ns trium.storage
-  (:require-macros [cljs.core.async.macros :refer [go]])
-  (:require [cljs.core.async :as async :refer [put! chan <! close!]]
-            [clojure.set :refer [rename-keys]]
-            [trium.utils :refer [find-first]])
-  )
+  (:require [trium.utils :refer [find-first]]))
 
 (def mock-data [ {:title "Es un sombrero" :album "Inocencia" :artist "Bosques de mi Mente"
                   :source "/home/dimka/Home/dimka/Music/Bosques de mi Mente/Inocencia/01 Es un sombrero.mp3"}
@@ -27,162 +23,67 @@
                  {:title "Some track" :album "Untrue" :artist "not-Burial" :source "/home/dimka/unknown.mp3"}
                  ])
 
-;; due to having two different JS contexts: nodejs and webkit's, types
-;; of Objects do not match between them. So extending this protocol so that
-;; js->clj correctly recognizes end encodes Objects created in webkit context.
-;; this is mostly the copy of cljs.core (js->clj) function
-(extend-protocol IEncodeClojure
-  object
-  (-js->clj
-    ([x {:keys [keywordize-keys] :as options}]
-       (let [keyfn (if keywordize-keys keyword str)
-             f (fn thisfn [x]
-                 (cond
-                  (seq? x)
-                  (doall (map thisfn x))
-
-                  (coll? x)
-                  (into (empty x) (map thisfn x))
-
-                  (array? x)
-                  (vec (map thisfn x))
-
-                  ;; this is the changed part - added 'or'
-                  (or (identical? (type x) js/Object)
-                      (identical? (type x) (.-Object js/global)))
-                  (into {} (for [k (js-keys x)]
-                             [(keyfn k) (thisfn (aget x k))]))
-
-                  :else x))]
-         (f x)))
-    ([x] (-js->clj x {:keywordize-keys false}))))
-
-(def db-conn (atom nil))
+(def db (atom nil))
 
 (defn create-database []
-  (let [Datastore (js/require "nedb")]
-    (Datastore.)))
-
-(def next-id (atom 0))
-(defn gen-id [] (swap! next-id inc))
+  [])
 
 (defn stringify [obj]
   (.stringify js/JSON obj))
+;;[
+;; {
+;;   :name "Beatles"
+;;   :albums [ { :name "White Album"
+;;               :tracks [ {:unid "dfjfj" :title "Black Onion"} ]
+;;             }
+;;           ]
+;; }
+;;]
 
-(defn db-find [db findfn ch query-req]
-  "A generic version of DB query which labels each result with :id which can be used in certain parallel scenarios,
-when many requests are run and then collected back together. Dunno if this will ever be needed, may reconsider."
-  (.call findfn db
-   (clj->js (:query query-req))
-   (fn [err doc]
-     (when err (println "db error while finding" query-req))
-     (put! ch
-           {:id (:id query-req)
-            :res (js->clj doc :keywordize-keys true)
-            :err err})))
-  ch)
+(defn create-artist [t]
+  {:name (:artist t) :albums []})
 
-(defn db-insert [db ch record]
-  (.insert db (clj->js record) (fn [err doc]
-                                 (when err (println "db error while inserting" record))
-                                 (if err
-                                   (put! ch {:error (str "failed to insert record " record ", error " err)})
-                                   (put! ch (js->clj doc :keywordize-keys true)))))
-  ch)
+(defn create-album [t]
+  {:name (:album t) :tracks []})
 
-(defn query-req [query]
-  (hash-map :id (gen-id) :query query))
+(defn upsert-in [seq pred keyseq create-elem-fn update-val-fn]
+  "Filters elements in seq using pred and then upserts a value of the element's key,
+by reaching into it using keyseq. If no element matches pred, it is conj-ed onto seq after
+being created by create-elem-fn while values inside elem will be updated using update-val-fn.
+create-elem-fn takes no args, update-val-fn - one arg.
+Example:
+;; (upsert-in [{:a 1 :b [2 1 3]}] #(= (:a %) 1) [:b] hash-map #(map inc %))
+;; => [{:a 1 :b [3 2 4]}]
+;; (upsert-in [{:b [2 1 3]}] #(= (:a %) 1) [:b] (fn [_] {:c 1}) #(map inc %))
+;; => [{:b [3 2 4]} {:c 1}]"
+  (if (some pred seq)
+    (map (fn [e]
+           (if (pred e)
+             (update-in e keyseq update-val-fn)
+             e))
+         seq)
+    (conj seq (update-in (create-elem-fn) keyseq update-val-fn))))
 
-(defn ^:private find-generic [db ch findfn query]
-  "executes a query and returns a found entity(-ies) or an empty map if not found.
-Returns a channel from which a result can be read on completion"
-  (go
-    (let [query-res (<! (db-find db findfn (chan) (query-req query)))]
-      (if-let [err (:error query-res)]
-        (put! ch {:error (str "failed to run query " query ": " err)})
-        (put! ch (if-let [r (:res query-res)] r {})))))
-  ch)
-
-(defn find-one [db ch query]
-  "executes a query and returns a found entity or an empty map if not found.
-Returns a channel from which a result can be read on completion"
-  (find-generic db ch (.-findOne db) query))
-
-(defn find-many
-  "executes a query and returns a found entities or an empty vec if none found.
-Returns a channel from which a result can be read on completion"
-  ([query ch]
-     (find-many @db-conn ch query))
-  ([db ch query]
-     (find-generic db ch (.-find db) query)))
-
-(defn resolve-entities! [db entity-coll query-keys]
-  "Searches for entities in DB and inserts those missing. Each entity is searched by constructing a query using passed query keys. Returns a channel which will contain a single item - the collection with entities, all of which will have a valid db id e.g. [{:name '...' :_id '...'}]"
-  (let [c (chan)
-        out-ch (chan)]
-    (go
-      (doseq [e entity-coll]
-        (let [re (<! (find-one db c (select-keys e query-keys)))]
-          (when (:error re) (println (str "warning! error while searching for entity "
-                                          e ", will try to insert it anyway")))
-          ;; if not found, need to insert...
-          (if (:_id re)
-            (put! out-ch re)
-            (put! out-ch (<! (db-insert db c e))))))
-      (close! out-ch))
-    (async/into [] out-ch)))
-
-(defn get-distinct-artists [tracks]
-  "Returns a seq of artist data, like {:name '...', ...}"
-  (->> tracks
-       (map (fn [t]
-              (-> t
-                  (select-keys [:artist])
-                  (rename-keys {:artist :name})
-                  (assoc :type :artist))))
-       (distinct)))
-
-(defn get-distinct-albums [tracks resolved-artists]
-  "Returns a seq of album data, like {:name '...', :artist 'id', :type :album}"
-  (->> tracks
-      (map (fn [t]
-             (-> t
-                 (select-keys [:album :artist])
-                 (rename-keys {:album :name})
-                 (assoc :type :album))))
-      (distinct)
-      (map (fn [a]
-             (let [artist-id (:_id (find-first #(= (:name %) (:artist a)) resolved-artists))]
-               (assoc a :artist artist-id))))))
-
-(defn resolve-track-links [t artists albums]
-  (let [artist-id (:_id (find-first #(= (:name %) (:artist t))
-                                    artists))
-        album-id (:_id (find-first  #(and (= (:name %) (:album t) )
-                                          (= (:artist %) artist-id))
-                                    albums))]
-    (when (nil? artist-id) (println "Warning failed to get artist id"))
-    (when (nil? album-id) (println "Warning failed to get album id"))
-    (assoc t
-      :artist artist-id
-      :album album-id)))
+(defn insert-track [db t]
+  (upsert-in db #(= (:name %) (:artist t))
+          [:albums]
+          #(create-artist t)
+          (fn [albums]
+            (upsert-in albums #(= (:name %) (:album t))
+                    [:tracks]
+                    #(create-album t)
+                    (fn [tracks]
+                      (conj tracks (select-keys t [:title :source]))))))
+)
 
 (defn insert-tracks! [db tracks]
   (go
     ;; (missing-from-db artists/albums will be added to db by resolve! functions)
-    (let [artists (get-distinct-artists tracks)
-          resolved-artists (<! (resolve-entities! db artists [:name :type]))
-          albums (get-distinct-albums tracks resolved-artists)
-          resolved-albums (<! (resolve-entities! db albums [:name :artist :type]))
-          ins-chan (chan)
-          insert-track (fn [t] (db-insert db ins-chan t))]
-      (doseq [t tracks]
-        ;; insert sequentially - one after another (use <! to wait for insertion to happen)
-        (<! (-> t
-                (resolve-track-links resolved-artists resolved-albums)
-                (insert-track))))
-      ;; FIXME error checking!!!
-      (println "inserted" (count tracks) "tracks," (count resolved-albums) "albums," (count resolved-artists) "artists"))))
+    (doseq [t tracks]
+      ;; insert sequentially - one after another (use <! to wait for insertion to happen)
+      (<! (insert-track db ins-chan t)))
+    ;; FIXME error checking!!!
+    ))
 
 (defn create-and-fill-database []
   (let [db (reset! db-conn (create-database))]
