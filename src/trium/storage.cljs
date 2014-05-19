@@ -23,7 +23,7 @@
                  {:title "Some track" :album "Untrue" :artist "not-Burial" :source "/home/dimka/unknown.mp3"}
                  ])
 
-(def db (atom nil))
+(def db-atom (atom nil))
 
 (defn create-database []
   [])
@@ -76,23 +76,20 @@ Example:
                       (conj tracks (select-keys t [:title :source]))))))
 )
 
-(defn insert-tracks! [db tracks]
-  (go
-    ;; (missing-from-db artists/albums will be added to db by resolve! functions)
-    (doseq [t tracks]
-      ;; insert sequentially - one after another (use <! to wait for insertion to happen)
-      (<! (insert-track db ins-chan t)))
-    ;; FIXME error checking!!!
-    ))
+(defn fill-db []
+  (swap! db-atom (fn [db]
+                   (reduce insert-track db mock-data)))
+  (println "filled db")
+  (println @db-atom))
 
 (defn create-and-fill-database []
-  (let [db (reset! db-conn (create-database))]
-    (insert-tracks! db mock-data)))
+  (reset! db-atom (create-database))
+  (fill-db)
+)
 
 ;; FIXME temp
 (defn test-reinsert-mock-data []
-  (insert-tracks! @db-conn mock-data)
-  )
+  (fill-db))
 
 ;; (query {:group-by :albums}) => {:albums (lazy-seq [{:title "Album1" :cover "/path/to/cover" :tracks (lazy-seq [{:title "track1"}])}
 ;;                                                    {:title "Album1" :cover "/path/to/cover" :tracks (lazy-seq [{:title "track1"}])}])}
