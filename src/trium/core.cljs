@@ -222,10 +222,16 @@
 
   )
 
+(defn handle-section-change-cmd [app cmd]
+  (om/transact! app #(assoc % :selected-section cmd))
+  (if (= :library cmd)
+    (om/transact! app #(assoc % :query-result (storage/get-albums []))))
+  )
+
 (defn handle-event [app type value]
   (cond
    (= type :playback-command) (handle-playback-cmd app value)
-   (= type :section-change) (om/transact! app #(assoc % :selected-section value))
+   (= type :section-change) (handle-section-change-cmd app value)
    :else
    (prn (str "don't know how to handle event " type " - " value))))
 

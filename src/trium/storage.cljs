@@ -11,6 +11,8 @@
                   :source "/home/dimka/Home/dimka/Music/Bosques de mi Mente/Inocencia/05 Semillas de Baobab.mp3"}
                  {:title "La suavidad de la puesta de sol" :album "Inocencia" :artist "Bosques de mi Mente"
                   :source "/home/dimka/Home/dimka/Music/Bosques de mi Mente/Inocencia/06 La suavidad de la puesta de sol.mp3"}
+                 {:title "La suavidad de la puesta de sol" :album "Inocencia-II" :artist "Bosques de mi Mente"
+                  :source "/home/dimka/Home/dimka/Music/Bosques de mi Mente/Inocencia/06 La suavidad de la puesta de sol.mp3"}
                  {:title "Archangel" :album "Untrue" :artist "Burial"
                   :source "/home/dimka/Home/dimka/Music/Burial/Untrue/02 Archangel.mp3"}
                  {:title "Near Dark" :album "Untrue" :artist "Burial"
@@ -86,6 +88,15 @@ Example:
   (reset! db-atom (create-database))
   (fill-db)
 )
+
+;; db access functions
+(defn get-albums [query]
+  (mapcat (fn [artist-doc]
+            (let [albums (:albums artist-doc)
+                  artist-name (:name artist-doc)]
+              (map #(assoc % :artist artist-name) albums)))
+          @db-atom)
+  )
 
 ;; FIXME temp
 (defn test-reinsert-mock-data []
