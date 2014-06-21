@@ -43,7 +43,7 @@
     (render [_]
       (if (= :header type)
         (dom/div #js {:className "item header"} title)
-        (dom/a #js {:className "item"
+        (dom/a #js {:className (if active "active item" "item")
                     :onClick (fn [e]
                                (when id
                                  (let [comm (om/get-shared owner :comm)]
