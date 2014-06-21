@@ -7,29 +7,44 @@
 
 (defn album-component [album owner]
   (reify
-    om/IRender
-    (render [_]
+    om/IRenderState
+    (render-state [this {:keys [playchan]}]
       (dom/div #js {:className "item album-card"}
-               (dom/div #js {:className "image"}
-                      (dom/img #js {:className "ui medium image" :src "images/placeholder_600x400.svg" :alt ""}))
+               (dom/div
+                #js {:className "image"
+                     :onClick #(put! playchan {:album album})}
+                (dom/img #js {:className "ui medium image" :src "images/placeholder_600x400.svg" :alt ""}))
                (dom/div #js {:className "content"}
                         (dom/div #js {:className "name"} (:artist album))
                         (dom/div nil (:name album)))))))
 
 (defn albums-component [app owner]
   (reify
-    om/IRender
-    (render [_]
+    om/IRenderState
+    (render-state [_ {:keys [playchan]}]
       (apply dom/div #js {:className "ui three items"}
-             (om/build-all album-component (sort-by :artist (:query-result app))))
-      )
-    )
-  )
+             (om/build-all album-component
+                           (sort-by :artist (:query-result app))
+                           {:init-state {:playchan playchan}})))))
+
+(defn play-tracks [app tracks]
+  (om/update! app [:queue :tracks] tracks))
 
 (defn library-component [app owner]
   (reify
-    om/IRender
-    (render [_]
+    om/IInitState
+    (init-state [_]
+      {:playchan (chan)})
+    om/IWillMount
+    (will-mount [_]
+      (let [playchan (om/get-state owner :playchan)]
+        (go
+          (while true
+            (let [item (<! playchan)]
+              (play-tracks app (get-in item [:album :tracks])))))))
+    om/IRenderState
+    (render-state [_ {:keys [playchan]}]
       (dom/div #js {:className ""}
-               (om/build albums-component app {:init-state {:query {:type :album}}})
-               ))))
+               (om/build albums-component
+                         app
+                         {:init-state {:query {:type :album} :playchan playchan}})))))
