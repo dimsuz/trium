@@ -9,18 +9,18 @@
   (reify
     om/IRender
     (render [_]
-      (dom/div #js {:className "column"}
-               (dom/div #js {:className "ui segment"}
-                      (dom/img #js {:className "ui medium image" :src "images/placeholder_600x400.svg" :alt ""})
-                      (dom/div #js {:className "uk-thumbnail-caption"}
-                               (dom/div nil (:artist album))
-                               (dom/div nil (:name album))))))))
+      (dom/div #js {:className "item album-card"}
+               (dom/div #js {:className "image"}
+                      (dom/img #js {:className "ui medium image" :src "images/placeholder_600x400.svg" :alt ""}))
+               (dom/div #js {:className "content"}
+                        (dom/div #js {:className "name"} (:artist album))
+                        (dom/div nil (:name album)))))))
 
 (defn albums-component [app owner]
   (reify
     om/IRender
     (render [_]
-      (apply dom/div #js {:className "ui three column grid"}
+      (apply dom/div #js {:className "ui three items"}
              (om/build-all album-component (sort-by :artist (:query-result app))))
       )
     )

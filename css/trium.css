@@ -46,3 +46,7 @@ body {
   padding-top: 10px;
   padding-bottom: 10px;
 }
+.album-card {
+  text-align: center;
+  min-height: 200px !important;
+}
