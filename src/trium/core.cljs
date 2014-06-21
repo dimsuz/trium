@@ -251,7 +251,7 @@
     )
 
 (storage/create-and-fill-database)
-;(player/init)
+(player/init)
 (om/root trium-app app-state
          {:target (dom-utils/by-id "app")
           :shared {:comm (chan)}})

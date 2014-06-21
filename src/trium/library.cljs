@@ -3,7 +3,8 @@
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan <! timeout]]
-            [trium.storage :as storage]))
+            [trium.storage :as storage]
+            [trium.queue :as queue]))
 
 (defn album-component [album owner]
   (reify
@@ -27,9 +28,6 @@
                            (sort-by :artist (:query-result app))
                            {:init-state {:playchan playchan}})))))
 
-(defn play-tracks [app tracks]
-  (om/update! app [:queue :tracks] tracks))
-
 (defn library-component [app owner]
   (reify
     om/IInitState
@@ -41,7 +39,7 @@
         (go
           (while true
             (let [item (<! playchan)]
-              (play-tracks app (get-in item [:album :tracks])))))))
+              (queue/replace app (get-in item [:album :tracks]) {:play true}))))))
     om/IRenderState
     (render-state [_ {:keys [playchan]}]
       (dom/div #js {:className ""}
