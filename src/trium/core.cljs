@@ -50,13 +50,7 @@
                                    (put! comm [:section-change id]))))}
                title
                (when icon (dom/i #js {:className (str icon " icon left")} nil))
-               (when badge (dom/div #js {:className "ui label"} badge))
-               ;; (dom/i nil
-               ;;        (when icon (dom/i #js {:className icon}))
-               ;;        (str " " title " ")
-               ;;        (when badge (dom/span #js {:className "uk-badge"} badge)))
-               )
-        )      )))
+               (when badge (dom/div #js {:className "ui label"} badge)))))))
 
 (defn queue-row [track owner]
   (reify
@@ -78,26 +72,27 @@
     om/IRenderState
     (render-state [this {:keys [comm]}]
       (let [paused? (= :paused (:player-state app))
-            icon (if paused? "uk-icon-play" "uk-icon-pause")
+            icon (if paused? "icon play" "icon pause")
             command (if paused? :play :pause)]
-        (dom/a #js {:href "#" :className (str "uk-icon-button " icon)
-                    :onClick (fn [e]
-                               (put! comm [:playback-command command])
-                               )} nil)))))
+        (dom/div #js {:className "ui circular icon button "
+                    :onClick (fn [e] (put! comm [:playback-command command]))}
+                 (dom/i #js {:className icon} nil))))))
 
 (defn forward-button [app owner]
   (reify
     om/IRenderState
     (render-state [this {:keys [comm]}]
-      (dom/a #js {:href "#" :className "uk-icon-button uk-icon-forward"
-                  :onClick (fn [e] (put! comm [:playback-command :forward]))} nil))))
+      (dom/div #js {:href "#" :className "ui small circular icon button"
+                  :onClick (fn [e] (put! comm [:playback-command :forward]))}
+               (dom/i #js {:className "icon forward"} nil)))))
 
 (defn backward-button [app owner]
   (reify
     om/IRenderState
     (render-state [this {:keys [comm]}]
-      (dom/a #js {:href "#" :className "uk-icon-button uk-icon-backward"
-                  :onClick (fn [e] (put! comm [:playback-command :backward]))} nil))))
+      (dom/a #js {:href "#" :className "ui small circular icon button"
+                  :onClick (fn [e] (put! comm [:playback-command :backward]))}
+             (dom/i #js {:className "icon backward"} nil)))))
 
 
 (defn current-track-view [track owner]
@@ -141,11 +136,12 @@
       (dom/div #js {:id (:id state) :className "notification" :style #js {:bottom (str (:y state) "px")
                                                                           :opacity (:alpha state)
                                                                           }}
-               (dom/div #js {:className "notification-inner uk-panel uk-panel-box"}
+               (dom/div #js {:className "notification-inner ui segment"}
                         (:text notification)
-                        (dom/div #js {:className "uk-progress uk-progress-mini uk-progress-striped uk-active"}
-                                 (dom/div #js {:className "uk-progress-bar" :style #js {:width "100%"}}))
-                        (dom/button #js {:className "uk-button uk-button-small uk-float-right"} "Wrong folder, choose another"))))))
+                        (dom/div #js {:className "ui blue active progress"}
+                                 (dom/div #js {:className "bar" :style #js {:width "100%"}} nil))
+                        (dom/button #js {:className "ui tiny button"} "Wrong folder, choose another")
+                        )))))
 
 (defn playback-panel [app owner]
   (reify
@@ -153,8 +149,8 @@
     (render [_]
       (let [comm (om/get-shared owner :comm)
             local-state {:init-state {:comm comm}}]
-        (dom/div #js {:className "uk-width-1-1"}
-                 (dom/div #js {:className "uk-panel uk-panel-box"}
+        (dom/div #js {:id "playback-panel" :className "sixteen wide column"}
+                 (dom/div #js {:className "ui segment"}
                           (om/build backward-button app local-state)
                           (om/build playpause-button app local-state)
                           (om/build forward-button app local-state)
@@ -249,7 +245,7 @@
       (dom/div #js {:className "ui grid"}
                (om/build left-sidebar app)
                (om/build central-panel app)
-               ;(om/build playback-panel app)
+               (om/build playback-panel app)
                )))
     )
 

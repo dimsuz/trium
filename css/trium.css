@@ -25,6 +25,9 @@ body {
   overflow: hidden;
   position: relative; /* for notifications which use absolute positioning */
 }
+#playback-panel {
+  margin-top: 0em;
+}
 .center-panel-content {
   max-height: 400px;
   min-height: 400px; /* needed for notifications to apper correctly */
