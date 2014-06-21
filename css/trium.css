@@ -17,20 +17,19 @@ body {
 /*** END OF SEMANTIC ENCHANCEMENTS */
 
 #main-sidebar {
-/*  max-height: 400px;*/
+  max-height: 510px;
 /*  overflow-y: auto; */
 }
 #center-panel {
-  max-height: 400px;
-  overflow: hidden;
   position: relative; /* for notifications which use absolute positioning */
+  padding-left: 0px; /* reset semantic default padding */
 }
 #playback-panel {
   margin-top: 0em;
 }
-.center-panel-content {
-  max-height: 400px;
-  min-height: 400px; /* needed for notifications to apper correctly */
+.scrollable-area {
+  max-height: 510px;
+  min-height: 510px; /* needed for notifications to apper correctly */
   overflow-y: auto;
 }
 

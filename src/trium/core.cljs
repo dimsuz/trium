@@ -63,7 +63,7 @@
   (reify
     om/IRender
     (render [_]
-      (dom/table #js {:className "ui table segment"}
+      (dom/table #js {:className "ui table"}
                  (apply dom/tbody nil
                         (om/build-all queue-row (get-in app [:queue :tracks])))))))
 
@@ -162,12 +162,13 @@
     (render [_]
       (dom/div #js {:id "center-panel" :className "twelve wide column"}
                (dom/div #js {:className "center-panel-content"}
-                        (condp = (:selected-section app)
-                         :library
-                         (om/build library/library-component app)
+                        (dom/div #js {:className "scrollable-area ui segment"}
+                                 (condp = (:selected-section app)
+                                   :library
+                                   (om/build library/library-component app)
 
-                         :queue
-                         (om/build queue-view app)))
+                                   :queue
+                                   (om/build queue-view app))))
                (when-let [n (:current-notification app)]
                  (om/build notification-view n {:init-state (select-keys n [:comm])})))
       )))

@@ -9,9 +9,9 @@
   (reify
     om/IRender
     (render [_]
-      (dom/div #js {:className "uk-width-1-3 album-component"}
-               (dom/a #js {:className "uk-thumbnail uk-thumbnail-medium"}
-                      (dom/img #js {:src "images/placeholder_600x400.svg" :alt ""})
+      (dom/div #js {:className "column"}
+               (dom/div #js {:className "ui segment"}
+                      (dom/img #js {:className "ui medium image" :src "images/placeholder_600x400.svg" :alt ""})
                       (dom/div #js {:className "uk-thumbnail-caption"}
                                (dom/div nil (:artist album))
                                (dom/div nil (:name album))))))))
@@ -20,7 +20,7 @@
   (reify
     om/IRender
     (render [_]
-      (apply dom/div #js {:className "uk-grid"}
+      (apply dom/div #js {:className "ui three column grid"}
              (om/build-all album-component (sort-by :artist (:query-result app))))
       )
     )
@@ -30,6 +30,6 @@
   (reify
     om/IRender
     (render [_]
-      (dom/div nil
+      (dom/div #js {:className ""}
                (om/build albums-component app {:init-state {:query {:type :album}}})
                ))))
