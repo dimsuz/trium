@@ -14,17 +14,17 @@
 
 (def gui-data
   {:left-sidebar {:items [{:title "MAIN" :type :header}
-                          {:title "Play Queue" :id :queue :icon "uk-icon-bars"}
-                          {:title "News" :icon "uk-icon-rss" :badge "3"}
+                          {:title "Play Queue" :id :queue :icon "unordered list"}
+                          {:title "News" :icon "rss" :badge "3"}
                           {:title "COLLECTION" :type :header}
-                          {:title "Library" :id :library :icon "uk-icon-folder"}
-                          {:title "Favorites" :id :favorites :icon "uk-icon-star"}
-                          {:title "History" :id :history :icon "uk-icon-suitcase"}
-                          {:title "Files" :id :files :icon "uk-icon-folder-open"}
+                          {:title "Library" :id :library :icon "folder"}
+                          {:title "Favorites" :id :favorites :icon "star"}
+                          {:title "History" :id :history :icon "time"}
+                          {:title "Files" :id :files :icon "open folder"}
                           {:title "PLAYLISTS" :type :header}
-                          {:title "Chillout" :icon "uk-icon-music"}
-                          {:title "Jazz" :icon "uk-icon-music"}
-                          {:title "Ambient" :icon "uk-icon-music"}
+                          {:title "Chillout" :icon "music"}
+                          {:title "Jazz" :icon "music"}
+                          {:title "Ambient" :icon "music"}
                           ]}})
 
 (def app-state
@@ -37,24 +37,26 @@
     :selected-section :queue
     }))
 
-(defn make-sidebar-item [{:keys [title icon badge id active]} owner]
-  (dom/li #js {:className (when active "uk-active")
-               :onClick (fn [e]
-                          (when id
-                            (let [comm (om/get-shared owner :comm)]
-                              (put! comm [:section-change id]))))}
-          (dom/a nil
-                 (when icon (dom/i #js {:className icon}))
-                 (str " " title " ")
-                 (when badge (dom/span #js {:className "uk-badge"} badge)))))
-
-(defn sidebar-item [item owner]
+(defn sidebar-item [{:keys [title icon type badge id active]} owner]
   (reify
     om/IRender
     (render [_]
-      (if (= :header (:type item))
-        (dom/li #js {:className "uk-nav-header"} (:title item))
-        (make-sidebar-item item owner)))))
+      (if (= :header type)
+        (dom/div #js {:className "item header"} title)
+        (dom/a #js {:className "item"
+                    :onClick (fn [e]
+                               (when id
+                                 (let [comm (om/get-shared owner :comm)]
+                                   (put! comm [:section-change id]))))}
+               title
+               (when icon (dom/i #js {:className (str icon " icon left")} nil))
+               (when badge (dom/div #js {:className "ui label"} badge))
+               ;; (dom/i nil
+               ;;        (when icon (dom/i #js {:className icon}))
+               ;;        (str " " title " ")
+               ;;        (when badge (dom/span #js {:className "uk-badge"} badge)))
+               )
+        )      )))
 
 (defn queue-row [track owner]
   (reify
@@ -67,7 +69,7 @@
   (reify
     om/IRender
     (render [_]
-      (dom/table #js {:className "uk-table"}
+      (dom/table #js {:className "ui table segment"}
                  (apply dom/tbody nil
                         (om/build-all queue-row (get-in app [:queue :tracks])))))))
 
@@ -162,7 +164,7 @@
   (reify
     om/IRender
     (render [_]
-      (dom/div #js {:id "center-panel" :className "uk-width-4-5"}
+      (dom/div #js {:id "center-panel" :className "twelve wide column"}
                (dom/div #js {:className "center-panel-content"}
                         (condp = (:selected-section app)
                          :library
@@ -178,14 +180,13 @@
   (reify
     om/IRender
     (render [_]
-      (dom/div #js {:id "main-sidebar" :className "uk-width-1-5"}
-               (dom/div #js {:className "uk-panel uk-panel-box"}
-                        (apply dom/ul #js {:className "uk-nav uk-nav-side"}
-                               (om/build-all sidebar-item
-                                             (map
-                                               #(assoc %
-                                                 :active (= (:selected-section app) (:id %)))
-                                               (get-in gui-data [:left-sidebar :items])))))))))
+      (dom/div #js {:id "main-sidebar" :className "four wide column"}
+               (apply dom/div #js {:id "main-sidebar" :className "ui fluid vertical menu"}
+                        (om/build-all sidebar-item
+                                      (map
+                                       #(assoc %
+                                          :active (= (:selected-section app) (:id %)))
+                                       (get-in gui-data [:left-sidebar :items]))))))))
 
 (defn playpause-playback [app cmd]
   "Starts playing or pauses depending on current player state.
@@ -245,10 +246,11 @@
               (recur)))))
     om/IRender
     (render [_]
-      (dom/div #js {:className "uk-grid"}
+      (dom/div #js {:className "ui grid"}
                (om/build left-sidebar app)
                (om/build central-panel app)
-               (om/build playback-panel app))))
+               ;(om/build playback-panel app)
+               )))
     )
 
 (storage/create-and-fill-database)
