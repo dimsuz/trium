@@ -25,11 +25,15 @@
                           {:title "Chillout" :icon "music"}
                           {:title "Jazz" :icon "music"}
                           {:title "Ambient" :icon "music"}
-                          ]}})
+                          ]}
+   :queue-headers [{:title "Artist" :track-field :artist}
+                   {:title "Title" :track-field :title}]})
 
 (def app-state
   (atom
-   {:queue {:tracks [{:title "Abakus - Shared Light" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track3"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"} {:title "Track"}]}
+   {:queue {:tracks [{:title "Shared Light" :artist "Abakus" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                     {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                     {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}]}
     ;; possible values: :playing :paused
     :player-state :paused
     :current-track nil
@@ -52,18 +56,35 @@
                (when icon (dom/i #js {:className (str icon " icon left")} nil))
                (when badge (dom/div #js {:className "ui label"} badge)))))))
 
+
+(defn queue-table-headers []
+  (map :title (:queue-headers gui-data)))
+
+(defn queue-table-track-fields []
+  (map :track-field (:queue-headers gui-data)))
+
 (defn queue-row [track owner]
   (reify
     om/IRender
     (render [_]
-      (dom/tr nil
-              (dom/td nil (:title track))))))
+      ;; select row must have tr with 'positive' class and first 'td' inside too (to show vertical bar)
+      (let [fields (queue-table-track-fields)
+            make-cell (fn [field selected?]
+                            (dom/td (when selected? #js {:className "positive"}) (field track)))
+            selected? true ;FIXME correctly determine by current track id
+            ]
+        (apply dom/tr (when selected? #js {:className "positive"})
+               (make-cell (first fields) selected?)
+               (map #(make-cell % false) (rest fields)))))))
 
 (defn queue-view [app]
   (reify
     om/IRender
     (render [_]
       (dom/table #js {:className "ui table"}
+                 (dom/thead nil
+                            (apply dom/tr nil
+                                   (map #(dom/th nil %) (queue-table-headers))))
                  (apply dom/tbody nil
                         (om/build-all queue-row (get-in app [:queue :tracks])))))))
 
