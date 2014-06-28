@@ -4,7 +4,7 @@
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan <! timeout]]
             [trium.storage :as storage]
-            [trium.queue :as queue]))
+            [trium.queue-ctrl :as queue]))
 
 (defn album-component [album owner]
   (reify

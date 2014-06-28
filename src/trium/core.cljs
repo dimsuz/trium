@@ -7,7 +7,8 @@
             [trium.anim-utils :as anim]
             [trium.dom-utils :as dom-utils]
             [trium.storage :as storage]
-            [trium.library :as library])
+            [trium.library :as library]
+            [trium.queue :as queue])
   )
 
 (enable-console-print!)
@@ -55,38 +56,6 @@
                title
                (when icon (dom/i #js {:className (str icon " icon left")} nil))
                (when badge (dom/div #js {:className "ui label"} badge)))))))
-
-
-(defn queue-table-headers []
-  (map :title (:queue-headers gui-data)))
-
-(defn queue-table-track-fields []
-  (map :track-field (:queue-headers gui-data)))
-
-(defn queue-row [[track current-track] owner]
-  (reify
-    om/IRender
-    (render [_]
-      ;; select row must have tr with 'positive' class and first 'td' inside too (to show vertical bar)
-      (let [fields (queue-table-track-fields)
-            make-cell (fn [field selected?]
-                            (dom/td (when selected? #js {:className "positive"}) (field track)))
-            selected? (and (not (nil? (:id current-track))) (= (:id current-track) (:id track)))
-            ]
-        (apply dom/tr (when selected? #js {:className "positive"})
-               (make-cell (first fields) selected?)
-               (map #(make-cell % false) (rest fields)))))))
-
-(defn queue-view [app]
-  (reify
-    om/IRender
-    (render [_]
-      (dom/table #js {:className "ui table"}
-                 (dom/thead nil
-                            (apply dom/tr nil
-                                   (map #(dom/th nil %) (queue-table-headers))))
-                 (apply dom/tbody nil
-                        (map #(om/build queue-row [% (:current-track app)]) (get-in app [:queue :tracks])))))))
 
 (defn playpause-button [app owner]
   (reify
@@ -189,7 +158,7 @@
                                    (om/build library/library-component app)
 
                                    :queue
-                                   (om/build queue-view app))))
+                                   (om/build queue/queue-view app))))
                (when-let [n (:current-notification app)]
                  (om/build notification-view n {:init-state (select-keys n [:comm])})))
       )))
