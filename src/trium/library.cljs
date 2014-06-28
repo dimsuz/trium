@@ -38,8 +38,10 @@
       (let [playchan (om/get-state owner :playchan)]
         (go
           (while true
-            (let [item (<! playchan)]
-              (queue/replace app (get-in item [:album :tracks]) {:play true}))))))
+            (let [item (<! playchan)
+                  album (get-in item [:album :name])
+                  artist (get-in item [:album :artist])]
+              (queue/replace app (storage/get-album-tracks {:artist artist :album album}) {:play true}))))))
     om/IRenderState
     (render-state [_ {:keys [playchan]}]
       (dom/div #js {:className ""}

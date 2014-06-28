@@ -90,13 +90,24 @@ Example:
 )
 
 ;; db access functions
+(defn get-album-tracks [query]
+  "Given a query like {:artist 'Burial' :album 'Untrue' returns a tracks for it"
+  (->> @db-atom
+       (filter #(= (:artist query) (:name %)))
+       (first)
+       :albums
+       (filter #(= (:album query) (:name %)))
+       (first)
+       :tracks
+       (map #(assoc % :album (:album query) :artist (:artist query)))
+       ))
+
 (defn get-albums [query]
   (mapcat (fn [artist-doc]
             (let [albums (:albums artist-doc)
                   artist-name (:name artist-doc)]
               (map #(assoc % :artist artist-name) albums)))
-          @db-atom)
-  )
+          @db-atom))
 
 ;; FIXME temp
 (defn test-reinsert-mock-data []
