@@ -1,5 +1,6 @@
 (ns trium.storage
-  (:require [trium.utils :refer [find-first]]))
+  (:require [trium.utils :refer [find-first]]
+            [cljs-uuid-utils :as uuid]))
 
 (def mock-data [ {:title "Es un sombrero" :album "Inocencia" :artist "Bosques de mi Mente"
                   :source "/home/dimka/Home/dimka/Music/Bosques de mi Mente/Inocencia/01 Es un sombrero.mp3"}
@@ -75,12 +76,14 @@ Example:
                     [:tracks]
                     #(create-album t)
                     (fn [tracks]
-                      (conj tracks (select-keys t [:title :source]))))))
+                      (conj tracks (select-keys t [:id :title :source]))))))
 )
 
 (defn fill-db []
   (swap! db-atom (fn [db]
-                   (reduce insert-track db mock-data)))
+                   (->> mock-data
+                        (map #(assoc % :id (uuid/make-random-uuid)))
+                        (reduce insert-track db))))
   (println "filled db")
   (println @db-atom))
 

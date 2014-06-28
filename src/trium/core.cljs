@@ -63,7 +63,7 @@
 (defn queue-table-track-fields []
   (map :track-field (:queue-headers gui-data)))
 
-(defn queue-row [track owner]
+(defn queue-row [[track current-track] owner]
   (reify
     om/IRender
     (render [_]
@@ -71,7 +71,7 @@
       (let [fields (queue-table-track-fields)
             make-cell (fn [field selected?]
                             (dom/td (when selected? #js {:className "positive"}) (field track)))
-            selected? true ;FIXME correctly determine by current track id
+            selected? (and (not (nil? (:id current-track))) (= (:id current-track) (:id track)))
             ]
         (apply dom/tr (when selected? #js {:className "positive"})
                (make-cell (first fields) selected?)
@@ -86,7 +86,7 @@
                             (apply dom/tr nil
                                    (map #(dom/th nil %) (queue-table-headers))))
                  (apply dom/tbody nil
-                        (om/build-all queue-row (get-in app [:queue :tracks])))))))
+                        (map #(om/build queue-row [% (:current-track app)]) (get-in app [:queue :tracks])))))))
 
 (defn playpause-button [app owner]
   (reify
