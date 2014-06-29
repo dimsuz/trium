@@ -28,13 +28,30 @@
                           {:title "Ambient" :icon "music"}
                           ]}
    :queue-headers [{:title "Artist" :track-field :artist}
-                   {:title "Title" :track-field :title}]})
+                   {:title "Title" :track-field :title}
+                   {:title "Album" :track-field :album}]})
+
+(def test-tracks [{:title "Shared Light" :artist "Abakus" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                  {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                  {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                  {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                  {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                  {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                  {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                  {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                  {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                  {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                  {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                  {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                  {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                  {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
+                  {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}])
 
 (def app-state
   (atom
-   {:queue {:tracks [{:title "Shared Light" :artist "Abakus" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
-                     {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}
-                     {:title "Shared Light II" :artist "Abakus II" :file "/home/dimka/Music/Abakus/That Much Closer to the Sun/02 Shared Light.mp3"}]}
+   {:queue {:tracks test-tracks
+            :navbar [{:title "Abakus - Shared Light" :active true}
+                     {:title "Burial - Untrue"}]}
     ;; possible values: :playing :paused
     :player-state :paused
     :current-track nil
@@ -146,19 +163,27 @@
                           (om/build forward-button app local-state)
                           (om/build current-track-view (:current-track app))))))))
 
+(defn build-library-section [app]
+  [(om/build library/library-component app)])
+
+(defn build-queue-section [app]
+  [(om/build queue/queue-component app)
+   (om/build queue/queue-navbar-component (get-in app [:queue :navbar]))])
+
 (defn central-panel [app owner]
   (reify
     om/IRender
     (render [_]
       (dom/div #js {:id "center-panel" :className "twelve wide column"}
                (dom/div #js {:className "center-panel-content"}
-                        (dom/div #js {:className "scrollable-area ui segment"}
+                        (apply dom/div #js {:className "scrollable-area ui segment"}
                                  (condp = (:selected-section app)
                                    :library
-                                   (om/build library/library-component app)
+                                   (build-library-section app)
 
                                    :queue
-                                   (om/build queue/queue-view app))))
+                                   (build-queue-section app)
+                                   )))
                (when-let [n (:current-notification app)]
                  (om/build notification-view n {:init-state (select-keys n [:comm])})))
       )))

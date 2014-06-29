@@ -8,7 +8,7 @@
 (defn queue-table-track-fields []
   (map :track-field (:queue-headers trium.core/gui-data)))
 
-(defn queue-row [[track current-track] owner]
+(defn queue-row-component [[track current-track] owner]
   (reify
     om/IRender
     (render [_]
@@ -29,17 +29,26 @@
 
 (defn build-tracks [app]
   (apply dom/tbody nil
-         (map #(om/build queue-row [% (:current-track app)]) (get-in app [:queue :tracks]))))
+         (map #(om/build queue-row-component [% (:current-track app)]) (get-in app [:queue :tracks]))))
 
-(defn queue-view [app]
+(defn build-navbar-item [item-data]
+  (dom/div #js {:className (if (:active item-data) "ui active step" "ui step")}
+           (:title item-data)))
+
+(defn queue-navbar-component [navbar]
+  (reify
+    om/IRender
+    (render [_]
+      (apply dom/div #js {:className "ui four small steps queue-navbar"}
+             ;; add a fake item so that semantic css would display arrow after last item
+             ;; TODO better solve this with css
+             (map build-navbar-item (conj navbar {:title "" :fake true}))))))
+
+(defn queue-component [app]
   (reify
     om/IRender
     (render [_]
       (dom/div nil
                (dom/table #js {:className "ui table"}
                           (build-headers)
-                          (build-tracks app))
-               (dom/div #js {:className "ui four small steps"}
-                        (dom/div #js {:className "ui active step"} "Abakus - Shared Light")
-                        (dom/div #js {:className "ui step"} "Abakus II")
-                        (dom/div #js {:className "ui step"} nil))))))
+                          (build-tracks app))))))

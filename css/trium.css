@@ -50,3 +50,9 @@ body {
   text-align: center;
   min-height: 200px !important;
 }
+.queue-navbar {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  right: 1rem;
+}
