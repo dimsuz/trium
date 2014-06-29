@@ -167,8 +167,7 @@
   [(om/build library/library-component app)])
 
 (defn build-queue-section [app]
-  [(om/build queue/queue-component app)
-   (om/build queue/queue-navbar-component (get-in app [:queue :navbar]))])
+  [(om/build queue/queue-component app)])
 
 (defn central-panel [app owner]
   (reify
@@ -176,14 +175,15 @@
     (render [_]
       (dom/div #js {:id "center-panel" :className "twelve wide column"}
                (dom/div #js {:className "center-panel-content"}
-                        (apply dom/div #js {:className "scrollable-area ui segment"}
-                                 (condp = (:selected-section app)
-                                   :library
-                                   (build-library-section app)
+                        (apply dom/div #js {:className "scrollable-area ui segment" :ref "srollable-area"}
+                               ;; build functions must return a vec
+                               ;; (i.e. having siblings in content div is supported)
+                               (condp = (:selected-section app)
+                                 :library
+                                 (build-library-section app)
 
-                                   :queue
-                                   (build-queue-section app)
-                                   )))
+                                 :queue
+                                 (build-queue-section app))))
                (when-let [n (:current-notification app)]
                  (om/build notification-view n {:init-state (select-keys n [:comm])})))
       )))
