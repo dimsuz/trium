@@ -44,7 +44,7 @@
               (queue/replace app (storage/get-album-tracks {:artist artist :album album}) {:play true}))))))
     om/IRenderState
     (render-state [_ {:keys [playchan]}]
-      (dom/div #js {:className ""}
+      (dom/div #js {:className "library-component"}
                (om/build albums-component
                          app
                          {:init-state {:query {:type :album} :playchan playchan}})))))

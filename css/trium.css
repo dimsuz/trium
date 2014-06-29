@@ -31,6 +31,7 @@ body {
   max-height: 510px;
   min-height: 510px; /* needed for notifications to apper correctly */
   overflow-y: auto;
+  padding: 0 !important;
 }
 
 .notification {
@@ -41,6 +42,9 @@ body {
 }
 .notification-inner {
   margin: 0 18px 0 10px;
+}
+.library-component {
+  padding: 1em;
 }
 .album-component {
   padding-top: 10px;
