@@ -13,7 +13,12 @@
     <script src="externs/soundjs/soundjs-0.5.2.min.js"></script>
     <script src="target/goog/base.js" type="text/javascript"></script>
     <script src="main.js" type="text/javascript"></script>
-    <script type="text/javascript">goog.require("trium.core");</script>
+    <script type="text/javascript">
+      goog.require("trium.core");
+      window.onload = function() {
+      trium.core.init();
+      };
+    </script>
     <!-- this is a 'release' tag set (see project.clj) -->
     <!-- <script src="main.js" type="text/javascript"></script> -->
   </body>

@@ -261,12 +261,11 @@
       (dom/div #js {:className "ui grid"}
                (om/build left-sidebar app)
                (om/build central-panel app)
-               (om/build playback-panel app)
-               )))
-    )
+               (om/build playback-panel app)))))
 
-(storage/create-and-fill-database)
-(player/init)
-(om/root trium-app app-state
-         {:target (dom-utils/by-id "app")
-          :shared {:comm (chan)}})
+(defn ^:export init []
+  (storage/create-and-fill-database)
+  (player/init)
+  (om/root trium-app app-state
+           {:target (dom-utils/by-id "app")
+            :shared {:comm (chan)}}))
