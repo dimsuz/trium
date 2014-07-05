@@ -3,6 +3,7 @@
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan <! timeout]]
+            [weasel.repl :as ws-repl]
             [trium.player :as player]
             [trium.anim-utils :as anim]
             [trium.dom-utils :as dom-utils]
@@ -10,8 +11,6 @@
             [trium.library :as library]
             [trium.queue :as queue])
   )
-
-(enable-console-print!)
 
 (def gui-data
   {:left-sidebar {:items [{:title "MAIN" :type :header}
@@ -263,7 +262,11 @@
                (om/build central-panel app)
                (om/build playback-panel app)))))
 
-(defn ^:export init []
+(defn ^:export init [dev-mode]
+  (if dev-mode
+    (do
+      (enable-console-print!)
+      (ws-repl/connect "ws://localhost:9001" :verbose true)))
   (storage/create-and-fill-database)
   (player/init)
   (om/root trium-app app-state

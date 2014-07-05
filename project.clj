@@ -4,8 +4,12 @@
                  [org.clojure/clojurescript "0.0-2261"]
                  [org.clojure/core.async "0.1.303.0-886421-alpha"]
                  [om "0.5.3"]
-                 [org.clojars.whodidthis/cljs-uuid-utils "1.0.0"]]
+                 [org.clojars.whodidthis/cljs-uuid-utils "1.0.0"]
+                 [com.cemerick/piggieback "0.1.3"]
+                 [weasel "0.3.0"]
+                 ]
   :profiles {:dev {:plugins []}}
+  :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 
   :cljsbuild
   {
