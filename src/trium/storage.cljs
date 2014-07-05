@@ -1,5 +1,6 @@
 (ns trium.storage
   (:require [trium.utils :refer [find-first]]
+            [trium.file-utils :as fs]
             [cljs-uuid-utils :as uuid]))
 
 (def mock-data [ {:title "Es un sombrero" :album "Inocencia" :artist "Bosques de mi Mente"
@@ -116,6 +117,10 @@ Example:
 (defn test-reinsert-mock-data []
   (fill-db))
 
+(defn create-db [path]
+  (fs/open path "w")
+  3
+  )
 ;; (query {:group-by :albums}) => {:albums (lazy-seq [{:title "Album1" :cover "/path/to/cover" :tracks (lazy-seq [{:title "track1"}])}
 ;;                                                    {:title "Album1" :cover "/path/to/cover" :tracks (lazy-seq [{:title "track1"}])}])}
 ;; (query {:artist "Artist" :group-by :albums}) => {:albums (lazy-seq [])} ; albums of artist only
