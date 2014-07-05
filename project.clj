@@ -1,8 +1,8 @@
 (defproject trium "0.1"
   :plugins [[lein-cljsbuild "1.0.3"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [org.clojure/clojurescript "0.0-2202"]
-                 [org.clojure/core.async "0.1.278.0-76b25b-alpha"]
+                 [org.clojure/clojurescript "0.0-2261"]
+                 [org.clojure/core.async "0.1.303.0-886421-alpha"]
                  [om "0.5.3"]
                  [org.clojars.whodidthis/cljs-uuid-utils "1.0.0"]]
   :profiles {:dev {:plugins []}}
