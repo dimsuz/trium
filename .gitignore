@@ -3,3 +3,6 @@ target/
 node_modules/
 uikit-2.5.0/
 main.js
+.lein-repl-history
+.nrepl-port
+.repl/
