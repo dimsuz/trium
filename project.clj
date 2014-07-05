@@ -1,5 +1,5 @@
 (defproject trium "0.1"
-  :plugins [[lein-cljsbuild "1.0.3"]]
+  :plugins [[lein-cljsbuild "1.0.3"] [com.cemerick/clojurescript.test "0.3.1"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/clojurescript "0.0-2261"]
                  [org.clojure/core.async "0.1.303.0-886421-alpha"]
@@ -7,21 +7,35 @@
                  [org.clojars.whodidthis/cljs-uuid-utils "1.0.0"]]
   :profiles {:dev {:plugins []}}
 
-  :cljsbuild {
-    :builds [{:id "dev"
-              :source-paths ["src"]
+  :cljsbuild
+  {
+   :builds [{:id "dev"
+              :source-paths ["src" "test"]
               :compiler {
                          :output-to "main.js"
                          :output-dir "target"
                          :optimizations :none
-                         :source-map true}}
-             {:id "release"
-              :source-paths ["src"]
-              :compiler {
-                         :output-to "main.js"
-                         :optimizations :advanced
-                         :pretty-print false
-                         :preamble ["react/react.min.js"]
-                         :externs ["react/externs/react.js"]}}
-             ]})
-          ;:source-map "target/main.js.map"
+                         :source-map true
+                         }}
+            ;; {:id "test"
+            ;;  :source-paths ["src" "test"]
+            ;;  :compiler {
+            ;;             :output-to "testable.js"
+            ;;             :optimizations :simple
+            ;;             }}
+            ;; {:id "release"
+            ;;   :source-paths ["src"]
+            ;;   :compiler {
+            ;;              :output-to "main.js"
+            ;;              :optimizations :advanced
+            ;;              :pretty-print false
+            ;;              :preamble ["externs/react/react-0.10.0.js"]
+            ;;              :externs ["externs/react/react-0.10.0.js"]}}
+             ]
+   ;; :test-commands
+   ;; { "unit-tests" [ "phantomjs" :runner
+   ;;                  "test/phantomjs-shims.js"
+   ;;                  "externs/react/react-0.10.0.js"
+   ;;                  "externs/soundjs/soundjs-0.5.2.min.js"
+   ;;                  "testable.js" ]}
+   })
